@@ -1,0 +1,6 @@
+[submodule "vendor/github.com/aws/aws-sdk-go"]
+	path = vendor/github.com/aws/aws-sdk-go
+	url = https://github.com/aws/aws-sdk-go
+[submodule "vendor/github.com/coreos/go-systemd"]
+	path = vendor/github.com/coreos/go-systemd
+	url = https://github.com/coreos/go-systemd

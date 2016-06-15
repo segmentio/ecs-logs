@@ -1,0 +1,20 @@
+machine:
+  environment:
+    GO15VENDOREXPERIMENT: 1
+  services:
+    - docker
+
+dependencies:
+  pre:
+    - sudo bash -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
+    - sudo apt-get update
+    - sudo apt-get install libsystemd-dev
+
+deployment:
+  hub:
+    branch: master
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - docker build -t segment/ecs-logs .
+      - docker tag segment/ecs-logs:latest segment/ecs-logs:$CIRCLE_SHA1
+      - docker push segment/ecs-logs
