@@ -6,4 +6,4 @@ go:
 addons:
   apt:
     packages:
-      libsystemd-dev
+      - libsystemd-dev
