@@ -32,5 +32,6 @@ docker run -t -i -v /run/logs/journal:/run/logs/journal:ro \
 ```
 That's it! The services logs should now be showing up in CloudWatch Logs.
 
-You can find the docker image at:
+### Docker Image
+
 - https://hub.docker.com/r/segment/ecs-logs
