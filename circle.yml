@@ -9,6 +9,9 @@ dependencies:
     - sudo bash -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
     - sudo apt-get update
     - sudo apt-get install libsystemd-dev
+  override:
+    - mkdir -p $HOME/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - ln -Tsf $HOME/$CIRCLE_PROJECT_REPONAME $REPO
 
 deployment:
   hub:
