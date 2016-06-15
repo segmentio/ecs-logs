@@ -13,6 +13,7 @@ dependencies:
   override:
     - mkdir -p $HOME/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME
     - ln -Tsf $HOME/$CIRCLE_PROJECT_REPONAME $REPO
+    - get get -v -t ./...
 
 deployment:
   hub:
