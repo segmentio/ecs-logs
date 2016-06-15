@@ -1,4 +1,4 @@
-# ecs-logs
+# ecs-logs [![CircleCI](https://circleci.com/gh/segmentio/ecs-logs.svg?style=shield)](https://circleci.com/gh/segmentio/ecs-logs)
 
 ecs-logs is a log forwarder for services ran by ecs-agent.
 
