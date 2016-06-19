@@ -17,6 +17,9 @@ dependencies:
     - sudo bash -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
     - sudo apt-get update
     - sudo apt-get install libsystemd-dev
+  override:
+    - cd ${REPO_DIR} && go get -t -d -v ./...
+  post:
 
 test:
   pre:
@@ -26,6 +29,8 @@ test:
     - cd ${REPO_DIR} && go tool cover -func ${CIRCLE_ARTIFACTS}/cover.out -o ${CIRCLE_ARTIFACTS}/cover.txt
     - cd ${REPO_DIR} && go tool cover -html ${CIRCLE_ARTIFACTS}/cover.out -o ${CIRCLE_ARTIFACTS}/cover.html
     - cd ${REPO_DIR} && go build
+  post:
+    - cd ${REPO_DIR} && go -build
 
 deployment:
   hub:
