@@ -27,7 +27,7 @@ test:
   override:
     - cd ${REPO_DIR} && go test -v -race -cover . ./lib/...
   post:
-    - cd ${REPO_DIR} && go -build
+    - cd ${REPO_DIR} && go build
 
 deployment:
   hub:
