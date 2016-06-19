@@ -1,7 +1,7 @@
 machine:
   environment:
     BASE_DIR: ${GOPATH%%:*}/src/github.com/${CIRCLE_PROJECT_USERNAME}
-    REPO_DIR: ${BASE_DIR}/ecs-logs
+    REPO_DIR: ${BASE_DIR}/${CIRCLE_PROJECT_REPONAME}
     GO15VENDOREXPERIMENT: 1
   services:
     - docker
@@ -28,15 +28,11 @@ test:
     - cd ${REPO_DIR} && go test -v -race -cover . ./lib/...
   post:
     - cd ${REPO_DIR} && go build
-    - pwd
-    - ls -l
 
 deployment:
   hub:
     branch: master
     commands:
-      - pwd
-      - ls -l
       - docker login -e ${DOCKER_EMAIL} -u ${DOCKER_USER} -p ${DOCKER_PASS}
       - docker build -t segment/ecs-logs .
       - docker tag segment/ecs-logs:latest segment/ecs-logs:${CIRCLE_SHA1}
