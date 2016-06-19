@@ -36,4 +36,5 @@ deployment:
       - docker login -e ${DOCKER_EMAIL} -u ${DOCKER_USER} -p ${DOCKER_PASS}
       - docker build -t segment/ecs-logs .
       - docker tag segment/ecs-logs:latest segment/ecs-logs:${CIRCLE_SHA1}
+      - docker tag segment/ecs-logs:latest segment/ecs-logs:circle-${CIRCLE_BUILD_NUM}
       - docker push segment/ecs-logs
