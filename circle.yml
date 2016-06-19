@@ -23,12 +23,9 @@ dependencies:
 
 test:
   pre:
-    - cd ${REPO_DIR} && go vet ./...
+    - cd ${REPO_DIR} && go vet . ./lib/...
   override:
-    - cd ${REPO_DIR} && go test -v -race -coverprofile=${CIRCLE_ARTIFACTS}/cover.out ./lib/...
-    - cd ${REPO_DIR} && go tool cover -func ${CIRCLE_ARTIFACTS}/cover.out -o ${CIRCLE_ARTIFACTS}/cover.txt
-    - cd ${REPO_DIR} && go tool cover -html ${CIRCLE_ARTIFACTS}/cover.out -o ${CIRCLE_ARTIFACTS}/cover.html
-    - cd ${REPO_DIR} && go build
+    - cd ${REPO_DIR} && go test -v -race -cover . ./lib/...
   post:
     - cd ${REPO_DIR} && go -build
 
