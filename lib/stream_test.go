@@ -64,6 +64,15 @@ func TestStreamName(t *testing.T) {
 	}
 }
 
+func TestStreamString(t *testing.T) {
+	ts := time.Now()
+	st := NewStream("0123456789", ts)
+
+	if s := st.String(); s != `stream { name = "0123456789" }` {
+		t.Error("invalid stream name:", s)
+	}
+}
+
 func TestStreamExpired(t *testing.T) {
 	ts := time.Now()
 	st := NewStream("0123456789", ts)
