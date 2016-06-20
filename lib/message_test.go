@@ -102,7 +102,7 @@ func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
 	e := NewMessageEncoder(errorWriter{x})
 
 	if err := e.WriteMessageBatch(batch); err != x {
-		t.Error("expected error (%s) but got %s", x, err)
+		t.Errorf("expected error (%s) but got %s", x, err)
 	}
 }
 
