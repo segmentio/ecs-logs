@@ -67,11 +67,11 @@ type messageEncoder struct {
 	w io.Writer
 }
 
-func (e messageEncoder) Close() error {
+func (e messageEncoder) Close() (err error) {
 	if c, ok := e.w.(io.Closer); ok {
-		return c.Close()
+		err = c.Close()
 	}
-	return nil
+	return
 }
 
 func (e messageEncoder) WriteMessage(msg Message) (err error) {
@@ -100,11 +100,11 @@ type messageDecoder struct {
 	r io.Reader
 }
 
-func (d messageDecoder) Close() error {
+func (d messageDecoder) Close() (err error) {
 	if c, ok := d.r.(io.Closer); ok {
-		return c.Close()
+		err = c.Close()
 	}
-	return nil
+	return
 }
 
 func (d messageDecoder) ReadMessage() (msg Message, err error) {
