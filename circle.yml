@@ -26,7 +26,6 @@ test:
     - cd ${REPO_DIR} && go vet . ./lib/...
   override:
     - cd ${REPO_DIR} && go test -v -race -cover . ./lib/...
-    - echo ${DOCKER_EMAIL}
   post:
     - cd ${REPO_DIR} && go build
 
