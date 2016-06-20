@@ -55,6 +55,15 @@ func TestSplitMessageListHead(t *testing.T) {
 	}
 }
 
+func TestStreamName(t *testing.T) {
+	ts := time.Now()
+	st := NewStream("0123456789", ts)
+
+	if s := st.Name(); s != "0123456789" {
+		t.Error("invalid stream name:", s)
+	}
+}
+
 func TestStreamExpired(t *testing.T) {
 	ts := time.Now()
 	st := NewStream("0123456789", ts)
