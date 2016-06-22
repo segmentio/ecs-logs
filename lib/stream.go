@@ -30,7 +30,7 @@ func NewStream(name string, now time.Time) *Stream {
 }
 
 func (stream *Stream) String() string {
-	return fmt.Sprintf("stream { name = %s }", stream.Name())
+	return fmt.Sprintf("stream { name = %#v }", stream.Name())
 }
 
 func (stream *Stream) Name() string {
