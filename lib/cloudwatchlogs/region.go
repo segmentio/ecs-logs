@@ -1,4 +1,4 @@
-package cwl
+package cloudwatchlogs
 
 import (
 	"encoding/json"

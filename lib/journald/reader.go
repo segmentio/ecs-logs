@@ -3,6 +3,7 @@
 package journald
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/coreos/go-systemd/sdjournal"
@@ -72,6 +73,23 @@ func (r journalReader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 		return
 	}
 
+	if s, e := r.j.GetDataValue("PRIORITY"); e != nil {
+		msg.Level = ecslogs.INFO
+	} else if v, e := strconv.Atoi(s); e != nil {
+		msg.Level = ecslogs.INFO
+	} else {
+		msg.Level = ecslogs.Level(v)
+	}
+
+	msg.PID, _ = r.j.GetDataValue("_PID")
+	msg.UID, _ = r.j.GetDataValue("_UID")
+	msg.GID, _ = r.j.GetDataValue("_GID")
+	msg.Errno, _ = r.j.GetDataValue("ERRNO")
+	msg.Line, _ = r.j.GetDataValue("CODE_LINE")
+	msg.Func, _ = r.j.GetDataValue("CODE_FUNC")
+	msg.File, _ = r.j.GetDataValue("CODE_FILE")
+	msg.ID, _ = r.j.GetDataValue("MESSAGE_ID")
+	msg.Host, _ = r.j.GetDataValue("_HOSTNAME")
 	msg.Time = time.Unix(int64(usec/1000000), int64((usec%1000000)*1000))
 	ok = true
 	return

@@ -1,4 +1,4 @@
-package cwl
+package cloudwatchlogs
 
 import "github.com/segmentio/ecs-logs/lib"
 

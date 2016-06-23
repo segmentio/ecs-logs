@@ -11,7 +11,8 @@ import (
 
 	"github.com/segmentio/ecs-logs/lib"
 
-	_ "github.com/segmentio/ecs-logs/lib/cwl"
+	_ "github.com/segmentio/ecs-logs/lib/cloudwatchlogs"
+	_ "github.com/segmentio/ecs-logs/lib/syslog"
 )
 
 func main() {
@@ -65,25 +66,24 @@ func main() {
 	for {
 		select {
 		case msg, ok := <-msgchan:
+			now := time.Now()
+
 			if !ok {
 				logf("reached EOF, waiting for all write operations to complete...")
+				limits.Force = true
+				flushAll(dest, store, limits, now, join)
 				join.Wait()
 				logf("done")
 				return
 			}
 
-			now := time.Now()
 			group, stream := store.Add(msg, now)
 			flush(dest, group, stream, limits, now, join)
 
 		case <-expchan:
 			logf("timer pulse, flushing streams that haven't been in a while and clearing expired cache...")
 			now := time.Now()
-			store.ForEach(func(group *ecslogs.Group) {
-				group.ForEach(func(stream *ecslogs.Stream) {
-					flush(dest, group, stream, limits, now, join)
-				})
-			})
+			flushAll(dest, store, limits, now, join)
 			store.RemoveExpired(cacheTimeout, now)
 
 		case <-sigchan:
@@ -95,6 +95,9 @@ func main() {
 
 func read(r ecslogs.MessageReader, c chan<- ecslogs.Message) {
 	defer close(c)
+
+	hostname, _ := os.Hostname()
+
 	for {
 		if msg, err := r.ReadMessage(); err != nil {
 			if err == io.EOF {
@@ -102,6 +105,14 @@ func read(r ecslogs.MessageReader, c chan<- ecslogs.Message) {
 			}
 			errorf("the message reader failed (%s)", err)
 		} else {
+			if len(msg.Host) == 0 {
+				msg.Host = hostname
+			}
+
+			if msg.Time == (time.Time{}) {
+				msg.Time = time.Now()
+			}
+
 			c <- msg
 		}
 	}
@@ -131,6 +142,14 @@ func flush(dest ecslogs.Destination, group *ecslogs.Group, stream *ecslogs.Strea
 		join.Add(1)
 		go write(dest, group.Name(), stream.Name(), batch, join)
 	}
+}
+
+func flushAll(dest ecslogs.Destination, store *ecslogs.Store, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
+	store.ForEach(func(group *ecslogs.Group) {
+		group.ForEach(func(stream *ecslogs.Stream) {
+			flush(dest, group, stream, limits, now, join)
+		})
+	})
 }
 
 func fatalf(format string, args ...interface{}) {

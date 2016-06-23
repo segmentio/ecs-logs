@@ -40,6 +40,16 @@ type MessageBatchWriteCloser interface {
 }
 
 type Message struct {
+	Level   Level     `json:"level"`
+	PID     int       `json:"pid,omitempty"`
+	UID     int       `json:"uid,omitempty"`
+	GID     int       `json:"gid,omitempty"`
+	Errno   int       `json:"errno,omitempty"`
+	Line    int       `json:"line,omitempty"`
+	Func    string    `json:"func,omitempty"`
+	File    string    `json:"file,omitempty"`
+	ID      string    `json:"id,omitempty"`
+	Host    string    `json:"host,omitempty"`
 	Group   string    `json:"group"`
 	Stream  string    `json:"stream"`
 	Content string    `json:"content"`
