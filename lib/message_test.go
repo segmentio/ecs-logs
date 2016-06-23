@@ -17,7 +17,7 @@ func TestMessageString(t *testing.T) {
 		Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
 	}
 
-	const ref = `{"level":6,"group":"abc","stream":"0123456789","content":"Hello World!","time":"2016-06-13T12:23:42.123456789Z"}`
+	const ref = `{"level":"INFO","group":"abc","stream":"0123456789","content":"Hello World!","time":"2016-06-13T12:23:42.123456789Z"}`
 
 	if s := m.String(); s != ref {
 		t.Errorf("invalid string representation of the message:\n - expected: %s\n - found:    %s", ref, s)

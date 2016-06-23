@@ -2,6 +2,7 @@ package ecslogs
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -45,7 +46,11 @@ func ParseLevel(s string) (lvl Level, err error) {
 	case "DEBUG":
 		lvl = DEBUG
 	default:
-		err = ParseLevelError{s}
+		if v, e := strconv.ParseInt(s, 10, 64); e != nil {
+			err = ParseLevelError{s}
+		} else {
+			lvl = Level(v)
+		}
 	}
 	return
 }
@@ -69,6 +74,28 @@ func (lvl Level) String() string {
 	case DEBUG:
 		return "DEBUG"
 	default:
-		return fmt.Sprintf("<%d>", lvl)
+		return strconv.Itoa(int(lvl))
 	}
+}
+
+func (lvl Level) GoString() string {
+	return lvl.String()
+}
+
+func (lvl Level) MarshalText() (b []byte, err error) {
+	b = []byte(lvl.String())
+	return
+}
+
+func (lvl Level) MarshalJSON() (b []byte, err error) {
+	return lvl.MarshalText()
+}
+
+func (lvl *Level) UnmarshalText(b []byte) (err error) {
+	*lvl, err = ParseLevel(string(b))
+	return
+}
+
+func (lvl *Level) UnmarshalJSON(b []byte) (err error) {
+	return lvl.UnmarshalText(b)
 }
