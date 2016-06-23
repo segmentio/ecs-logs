@@ -52,9 +52,9 @@ func TestParseLevelSuccess(t *testing.T) {
 
 func TestParseLevelFailure(t *testing.T) {
 	if _, err := ParseLevel(""); err == nil {
-		t.Errorf("no error returned when parsing an invalid log level")
+		t.Error("no error returned when parsing an invalid log level")
 	} else if s := err.Error(); s != "invalid message level \"\"" {
-		t.Errorf("invalid error message returned when parsing an invalid log level:", s)
+		t.Error("invalid error message returned when parsing an invalid log level:", s)
 	}
 }
 
