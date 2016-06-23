@@ -14,36 +14,31 @@ import (
 )
 
 const (
-	DefaultFormat = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
+	DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
 )
 
-func NewWriterTemplate(format string) *template.Template {
-	if !strings.HasSuffix(format, "\n") {
-		format += "\n"
-	}
-	t := template.New("syslog")
-	template.Must(t.Parse(format))
-	return t
+type DialConfig struct {
+	Network    string
+	Address    string
+	Template   string
+	TimeFormat string
 }
 
 func NewMessageBatchWriter(group string, stream string) (ecslogs.MessageBatchWriteCloser, error) {
-	return DialWriter("", "", nil)
+	return DialWriter(DialConfig{})
 }
 
-func DialWriter(network string, address string, template *template.Template) (w ecslogs.MessageBatchWriteCloser, err error) {
-	var timeFormat string
+func DialWriter(config DialConfig) (w ecslogs.MessageBatchWriteCloser, err error) {
 	var netopts []string
 	var addropts []string
 	var conn net.Conn
 
-	if len(network) != 0 {
-		netopts = []string{network}
-		addropts = []string{address}
-		timeFormat = "2006-01-02T15:04:05.999Z07:00"
+	if len(config.Network) != 0 {
+		netopts = []string{config.Network}
+		addropts = []string{config.Address}
 	} else {
 		netopts = []string{"unixgram", "unix"}
 		addropts = []string{"/dev/log", "/var/run/syslog", "/var/run/log"}
-		timeFormat = time.Stamp
 	}
 
 connect:
@@ -59,37 +54,58 @@ connect:
 		return
 	}
 
-	w = NewWriter(conn, template, timeFormat)
+	w = NewWriter(WriterConfig{
+		Backend:    conn,
+		Template:   config.Template,
+		TimeFormat: config.TimeFormat,
+	})
 	return
 }
 
-func NewWriter(w io.Writer, t *template.Template, timeFormat string) ecslogs.MessageBatchWriteCloser {
-	if t == nil {
-		t = NewWriterTemplate(DefaultFormat)
+type WriterConfig struct {
+	Backend    io.Writer
+	Template   string
+	TimeFormat string
+}
+
+func NewWriter(config WriterConfig) ecslogs.MessageBatchWriteCloser {
+	if len(config.TimeFormat) == 0 {
+		config.TimeFormat = time.Stamp
 	}
-	c, _ := w.(io.Closer)
+
+	if len(config.Template) == 0 {
+		config.Template = DefaultTemplate
+	}
+
 	return syslogWriter{
-		c: c,
-		t: t,
-		b: bufio.NewWriter(w),
-		f: timeFormat,
+		WriterConfig: config,
+		buf:          bufio.NewWriter(config.Backend),
+		tpl:          newWriterTemplate(config.Template),
 	}
+}
+
+func newWriterTemplate(format string) *template.Template {
+	if !strings.HasSuffix(format, "\n") {
+		format += "\n"
+	}
+	t := template.New("syslog")
+	template.Must(t.Parse(format))
+	return t
 }
 
 type syslogWriter struct {
-	c io.Closer
-	b *bufio.Writer
-	t *template.Template
-	f string
+	WriterConfig
+	buf *bufio.Writer
+	tpl *template.Template
 }
 
 func (w syslogWriter) Close() (err error) {
-	if err = w.b.Flush(); err != nil {
+	if err = w.buf.Flush(); err != nil {
 		return
 	}
 
-	if w.c != nil {
-		err = w.c.Close()
+	if c, ok := w.Backend.(io.Closer); ok {
+		err = c.Close()
 	}
 
 	return
@@ -112,7 +128,7 @@ func (w syslogWriter) WriteMessage(msg ecslogs.Message) (err error) {
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
 		MSG:       msg.Content,
-		TIMESTAMP: msg.Time.Format(w.f),
+		TIMESTAMP: msg.Time.Format(w.TimeFormat),
 	}
 
 	if len(m.HOSTNAME) == 0 {
@@ -133,8 +149,8 @@ func (w syslogWriter) WriteMessage(msg ecslogs.Message) (err error) {
 		m.SOURCE = fmt.Sprintf("%s:%s:%d", msg.File, msg.Func, msg.Line)
 	}
 
-	if err = w.t.Execute(w.b, m); err == nil {
-		err = w.b.Flush()
+	if err = w.tpl.Execute(w.buf, m); err == nil {
+		err = w.buf.Flush()
 	}
 
 	return
