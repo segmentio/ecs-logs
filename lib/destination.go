@@ -35,6 +35,19 @@ func GetDestination(name string) (destination Destination) {
 	return
 }
 
+func GetDestinations(names ...string) (destinations []Destination) {
+	if len(names) != 0 {
+		destinations = make([]Destination, 0, len(names))
+
+		for _, name := range names {
+			if destination := GetDestination(name); destination != nil {
+				destinations = append(destinations, destination)
+			}
+		}
+	}
+	return
+}
+
 func DestinationsAvailable() (destinations []string) {
 	dstmtx.RLock()
 	destinations = make([]string, 0, len(dstmap))

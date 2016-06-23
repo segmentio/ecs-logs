@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/segmentio/ecs-logs/lib"
@@ -25,8 +26,8 @@ func main() {
 	var flushTimeout time.Duration
 	var cacheTimeout time.Duration
 
-	flag.StringVar(&src, "src", "stdin", "The log source from which messages will be read ["+strings.Join(ecslogs.SourcesAvailable(), ", ")+"]")
-	flag.StringVar(&dst, "dst", "stdout", "The log destination to which messages will be written ["+strings.Join(ecslogs.DestinationsAvailable(), ", ")+"]")
+	flag.StringVar(&src, "src", "stdin", "A comma separated list of log sources from which messages will be read ["+strings.Join(ecslogs.SourcesAvailable(), ", ")+"]")
+	flag.StringVar(&dst, "dst", "stdout", "A comma separated list of log destinations to which messages will be written ["+strings.Join(ecslogs.DestinationsAvailable(), ", ")+"]")
 	flag.IntVar(&maxBytes, "max-batch-bytes", 1000000, "The maximum size in bytes of a message batch")
 	flag.IntVar(&maxCount, "max-batch-size", 10000, "The maximum number of messages in a batch")
 	flag.DurationVar(&flushTimeout, "flush-timeout", 5*time.Second, "How often messages will be flushed")
@@ -34,20 +35,20 @@ func main() {
 	flag.Parse()
 
 	var store = ecslogs.NewStore()
-	var source ecslogs.Source
-	var dest ecslogs.Destination
-	var reader ecslogs.Reader
+	var sources []ecslogs.Source
+	var dests []ecslogs.Destination
+	var readers []ecslogs.Reader
 
-	if source = ecslogs.GetSource(src); source == nil {
-		fatalf("unknown log source (%s)", src)
+	if sources = ecslogs.GetSources(strings.Split(src, ",")...); len(sources) == 0 {
+		fatalf("no or invalid log sources")
 	}
 
-	if dest = ecslogs.GetDestination(dst); dest == nil {
-		fatalf("unknown log destination (%s)", dst)
+	if dests = ecslogs.GetDestinations(strings.Split(dst, ",")...); len(dests) == 0 {
+		fatalf("no or invalid log destinations")
 	}
 
-	if reader, err = source.Open(); err != nil {
-		fatalf("failed to open log source (%s)", err)
+	if readers, err = openSources(sources); err != nil {
+		fatalf("failed to open sources (%s)", err)
 	}
 
 	join := &sync.WaitGroup{}
@@ -59,10 +60,10 @@ func main() {
 	}
 
 	expchan := time.Tick(flushTimeout)
-	msgchan := make(chan ecslogs.Message, 1)
+	msgchan := make(chan ecslogs.Message, len(readers))
 	sigchan := make(chan os.Signal, 1)
-
-	go read(reader, msgchan)
+	counter := int32(len(readers))
+	startReaders(readers, msgchan, &counter)
 
 	for {
 		select {
@@ -72,50 +73,88 @@ func main() {
 			if !ok {
 				logf("reached EOF, waiting for all write operations to complete...")
 				limits.Force = true
-				flushAll(dest, store, limits, now, join)
+				flushAll(dests, store, limits, now, join)
 				join.Wait()
 				logf("done")
 				return
 			}
 
 			group, stream := store.Add(msg, now)
-			flush(dest, group, stream, limits, now, join)
+			flush(dests, group, stream, limits, now, join)
 
 		case <-expchan:
 			logf("timer pulse, flushing streams that haven't been in a while and clearing expired cache...")
 			now := time.Now()
-			flushAll(dest, store, limits, now, join)
+			flushAll(dests, store, limits, now, join)
 			store.RemoveExpired(cacheTimeout, now)
 
 		case <-sigchan:
 			logf("got interrupt signal, closing message reader...")
-			reader.Close()
+			stopReaders(readers)
 		}
 	}
 }
 
-func read(r ecslogs.Reader, c chan<- ecslogs.Message) {
-	defer close(c)
+func openSources(sources []ecslogs.Source) (readers []ecslogs.Reader, err error) {
+	readers = make([]ecslogs.Reader, 0, len(sources))
 
+	for _, source := range sources {
+		if r, e := source.Open(); e != nil {
+			errorf("failed to open log source (%s)", err)
+		} else {
+			readers = append(readers, r)
+		}
+	}
+
+	if len(readers) == 0 {
+		err = fmt.Errorf("no sources to read from")
+	}
+
+	return
+}
+
+func startReaders(readers []ecslogs.Reader, msgchan chan<- ecslogs.Message, counter *int32) {
 	hostname, _ := os.Hostname()
 
+	for _, reader := range readers {
+		go read(reader, msgchan, counter, hostname)
+	}
+}
+
+func stopReaders(readers []ecslogs.Reader) {
+	for _, reader := range readers {
+		reader.Close()
+	}
+}
+
+func term(c chan<- ecslogs.Message, counter *int32) {
+	if atomic.AddInt32(counter, -1) == 0 {
+		close(c)
+	}
+}
+
+func read(r ecslogs.Reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
+	defer term(c, counter)
 	for {
-		if msg, err := r.ReadMessage(); err != nil {
+		var msg ecslogs.Message
+		var err error
+
+		if msg, err = r.ReadMessage(); err != nil {
 			if err == io.EOF {
 				break
 			}
 			errorf("the message reader failed (%s)", err)
-		} else {
-			if len(msg.Host) == 0 {
-				msg.Host = hostname
-			}
-
-			if msg.Time == (time.Time{}) {
-				msg.Time = time.Now()
-			}
-
-			c <- msg
 		}
+
+		if len(msg.Host) == 0 {
+			msg.Host = hostname
+		}
+
+		if msg.Time == (time.Time{}) {
+			msg.Time = time.Now()
+		}
+
+		c <- msg
 	}
 }
 
@@ -137,18 +176,20 @@ func write(dest ecslogs.Destination, group string, stream string, batch []ecslog
 	}
 }
 
-func flush(dest ecslogs.Destination, group *ecslogs.Group, stream *ecslogs.Stream, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
+func flush(dests []ecslogs.Destination, group *ecslogs.Group, stream *ecslogs.Stream, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	if batch := stream.Flush(limits, now); len(batch) != 0 {
 		logf("flushing %d messages to %s::%s", len(batch), group.Name(), stream.Name())
-		join.Add(1)
-		go write(dest, group.Name(), stream.Name(), batch, join)
+		for _, dest := range dests {
+			join.Add(1)
+			go write(dest, group.Name(), stream.Name(), batch, join)
+		}
 	}
 }
 
-func flushAll(dest ecslogs.Destination, store *ecslogs.Store, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
+func flushAll(dests []ecslogs.Destination, store *ecslogs.Store, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	store.ForEach(func(group *ecslogs.Group) {
 		group.ForEach(func(stream *ecslogs.Stream) {
-			flush(dest, group, stream, limits, now, join)
+			flush(dests, group, stream, limits, now, join)
 		})
 	})
 }

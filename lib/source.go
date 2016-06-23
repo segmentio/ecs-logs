@@ -35,6 +35,19 @@ func GetSource(name string) (source Source) {
 	return
 }
 
+func GetSources(names ...string) (sources []Source) {
+	if len(names) != 0 {
+		sources = make([]Source, 0, len(names))
+
+		for _, name := range names {
+			if source := GetSource(name); source != nil {
+				sources = append(sources, source)
+			}
+		}
+	}
+	return
+}
+
 func SourcesAvailable() (sources []string) {
 	srcmtx.RLock()
 	sources = make([]string, 0, len(srcmap))
