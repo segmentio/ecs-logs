@@ -2,6 +2,7 @@ package cloudwatchlogs
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -109,8 +110,9 @@ func makeLogEvents(batch []ecslogs.Message) (events []*cloudwatchlogs.InputLogEv
 
 	for _, msg := range batch {
 		if len(msg.Content) != 0 {
+			msg.Time = time.Time{}
 			events = append(events, &cloudwatchlogs.InputLogEvent{
-				Message:   aws.String(msg.Content),
+				Message:   aws.String(msg.String()),
 				Timestamp: aws.Int64(aws.TimeUnixMilli(msg.Time)),
 			})
 		}

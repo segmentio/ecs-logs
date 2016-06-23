@@ -50,10 +50,10 @@ type Message struct {
 	File    string    `json:"file,omitempty"`
 	ID      string    `json:"id,omitempty"`
 	Host    string    `json:"host,omitempty"`
-	Group   string    `json:"group"`
-	Stream  string    `json:"stream"`
-	Content string    `json:"content"`
-	Time    time.Time `json:"time"`
+	Group   string    `json:"group,omitempty"`
+	Stream  string    `json:"stream,omitempty"`
+	Content string    `json:"content,omitempty"`
+	Time    time.Time `json:"time,omitempty"`
 }
 
 func (m Message) String() string {
