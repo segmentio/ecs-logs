@@ -46,7 +46,7 @@ func getEndpoint() (endpoint string, err error) {
 	}
 
 	if token = os.Getenv("LOGGLY_TOKEN"); len(token) != 0 {
-		endpoint = "tls://logs-01.loggly.com:6514/?token=" + url.QueryEscape(token)
+		endpoint = "tls://" + token + "@logs-01.loggly.com:6514"
 		return
 	}
 
@@ -76,11 +76,11 @@ func parseEndpoint(endpoint string, group string, stream string) (protocol strin
 		return
 	}
 
-	if token, err = extractToken(u, q); err != nil {
+	if token, err = extractToken(u); err != nil {
 		return
 	}
 
-	pen = extractPEN(u, q)
+	pen = extractPEN(u)
 	tags = extractTags(u, q, group, stream)
 	return
 }
@@ -106,17 +106,27 @@ func extractAddress(u *url.URL) (address string, err error) {
 	return
 }
 
-func extractToken(u *url.URL, q url.Values) (token string, err error) {
-	if token = q.Get("token"); len(token) == 0 {
+func extractToken(u *url.URL) (token string, err error) {
+	if u.User != nil {
+		token = u.User.Username()
+	}
+
+	if len(token) == 0 {
 		err = fmt.Errorf("missing token parameter in loggly endpoint: %s", u)
 	}
+
 	return
 }
 
-func extractPEN(u *url.URL, q url.Values) (pen string) {
-	if pen = q.Get("PEN"); len(pen) == 0 {
+func extractPEN(u *url.URL) (pen string) {
+	if u.User != nil {
+		pen, _ = u.User.Password()
+	}
+
+	if len(pen) == 0 {
 		pen = "41058"
 	}
+
 	return
 }
 

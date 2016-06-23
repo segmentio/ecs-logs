@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -27,8 +29,25 @@ type WriterConfig struct {
 	TLS        *tls.Config
 }
 
-func NewWriter(group string, stream string) (ecslogs.Writer, error) {
-	return DialWriter(WriterConfig{})
+func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
+	var c WriterConfig
+	var s string
+	var u *url.URL
+
+	if s = os.Getenv("SYSLOG_URL"); len(s) != 0 {
+		if u, err = url.Parse(s); err != nil {
+			err = fmt.Errorf("invalid syslog URL: %s", err)
+			return
+		}
+
+		c.Network = u.Scheme
+		c.Address = u.Host
+	}
+
+	c.Template = os.Getenv("SYSLOG_TEMPLATE")
+	c.TimeFormat = os.Getenv("SYSLOG_TIME_FORMAT")
+
+	return DialWriter(c)
 }
 
 func DialWriter(config WriterConfig) (w ecslogs.Writer, err error) {
@@ -36,8 +55,19 @@ func DialWriter(config WriterConfig) (w ecslogs.Writer, err error) {
 	var addropts []string
 	var backend io.Writer
 
-	if len(config.Network) != 0 {
-		netopts = []string{config.Network}
+	if len(config.Address) != 0 {
+		if len(config.Network) != 0 {
+			netopts = []string{config.Network}
+		} else {
+			// When starting with a '/' we assume it's gonna be a file path,
+			// otherwise we fallback to trying a TLS connection so we don't
+			// implicitly send logs over an unsecured link.
+			if strings.HasPrefix(config.Address, "/") {
+				netopts = []string{"unixgram", "unix"}
+			} else {
+				netopts = []string{"tls"}
+			}
+		}
 		addropts = []string{config.Address}
 	} else {
 		// This was copied from the standard log/syslog package, they do the same
