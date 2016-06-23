@@ -80,7 +80,7 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 }
 
 func (r reader) getInt(k string) (v int) {
-	if s, e := r.getString(j, k); err == nil {
+	if s, e := r.getString(j, k); e == nil {
 		v = strconv.Atoi(s)
 	}
 	return
