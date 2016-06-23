@@ -36,15 +36,14 @@ func GetDestination(name string) (destination Destination) {
 }
 
 func GetDestinations(names ...string) (destinations []Destination) {
-	if len(names) != 0 {
-		destinations = make([]Destination, 0, len(names))
+	destinations = make([]Destination, 0, len(names))
 
-		for _, name := range names {
-			if destination := GetDestination(name); destination != nil {
-				destinations = append(destinations, destination)
-			}
+	for _, name := range names {
+		if destination := GetDestination(name); destination != nil {
+			destinations = append(destinations, destination)
 		}
 	}
+
 	return
 }
 
