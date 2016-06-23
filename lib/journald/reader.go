@@ -10,7 +10,7 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 )
 
-func NewMessageReader() (r ecslogs.MessageReadCloser, err error) {
+func NewReader() (r ecslogs.Reader, err error) {
 	var j *sdjournal.Journal
 
 	if j, err = sdjournal.NewJournal(); err != nil {
@@ -22,19 +22,15 @@ func NewMessageReader() (r ecslogs.MessageReadCloser, err error) {
 		return
 	}
 
-	r = journalReader{j}
+	r = reader{j}
 	return
 }
 
-type journalReader struct {
-	j *sdjournal.Journal
+type reader struct {
+	*sdjournal.Journal
 }
 
-func (r journalReader) Close() error {
-	return r.j.Close()
-}
-
-func (r journalReader) ReadMessage() (msg ecslogs.Message, err error) {
+func (r reader) ReadMessage() (msg ecslogs.Message, err error) {
 	for {
 		var cur int
 		var ok bool
@@ -54,43 +50,61 @@ func (r journalReader) ReadMessage() (msg ecslogs.Message, err error) {
 	}
 }
 
-func (r journalReader) getMessage() (msg ecslogs.Message, ok bool, err error) {
-	var usec uint64
-
-	if msg.Group, _ = r.j.GetDataValue("CONTAINER_TAG"); len(msg.Group) == 0 {
+func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
+	if msg.Group, err = r.GetDataValue("CONTAINER_TAG"); len(msg.Group) == 0 {
+		// No CONTAINER_TAG, this must be a journal message from a process that
+		// isn't running in a docker container.
 		return
 	}
 
-	if msg.Stream, err = r.j.GetDataValue("CONTAINER_NAME"); err != nil {
+	if msg.Stream, err = r.GetDataValue("CONTAINER_NAME"); err != nil {
+		// There's a CONTAINER_TAG but no CONTAINER_NAME, something is seriously
+		// wrong here, the log docker log driver is misbehaving.
 		return
 	}
 
-	if msg.Content, err = r.j.GetDataValue("MESSAGE"); err != nil {
-		return
-	}
-
-	if usec, err = r.j.GetRealtimeUsec(); err != nil {
-		return
-	}
-
-	if s, e := r.j.GetDataValue("PRIORITY"); e != nil {
-		msg.Level = ecslogs.INFO
-	} else if v, e := strconv.Atoi(s); e != nil {
-		msg.Level = ecslogs.INFO
-	} else {
-		msg.Level = ecslogs.Level(v)
-	}
-
-	msg.PID, _ = r.j.GetDataValue("_PID")
-	msg.UID, _ = r.j.GetDataValue("_UID")
-	msg.GID, _ = r.j.GetDataValue("_GID")
-	msg.Errno, _ = r.j.GetDataValue("ERRNO")
-	msg.Line, _ = r.j.GetDataValue("CODE_LINE")
-	msg.Func, _ = r.j.GetDataValue("CODE_FUNC")
-	msg.File, _ = r.j.GetDataValue("CODE_FILE")
-	msg.ID, _ = r.j.GetDataValue("MESSAGE_ID")
-	msg.Host, _ = r.j.GetDataValue("_HOSTNAME")
-	msg.Time = time.Unix(int64(usec/1000000), int64((usec%1000000)*1000))
+	msg.Level = r.getPriority()
+	msg.PID = r.getInt("_PID")
+	msg.UID = r.getInt("_UID")
+	msg.GID = r.getInt("_GID")
+	msg.Errno = r.getInt("ERRNO")
+	msg.Line = r.getInt("CODE_LINE")
+	msg.Func = r.getString("CODE_FUNC")
+	msg.File = r.getString("CODE_FILE")
+	msg.ID = r.getString("MESSAGE_ID")
+	msg.Host = r.getString("_HOSTNAME")
+	msg.Content = r.getString("MESSAGE")
+	msg.Time = r.getTime()
 	ok = true
+	return
+}
+
+func (r reader) getInt(k string) (v int) {
+	if s, e := r.getString(j, k); err == nil {
+		v = strconv.Atoi(s)
+	}
+	return
+}
+
+func (r reader) getTime() (t time.Time) {
+	if u, e := r.GetRealtimeUsec(); e == nil {
+		t = time.Unix(int64(usec/1000000), int64((usec%1000000)*1000))
+	}
+	return
+}
+
+func (r reader) getPriority() (p ecslogs.Level) {
+	if s, e := r.getString(j, "PRIORITY"); e != nil {
+		p = ecslogs.INFO
+	} else if v, e := strconv.Atoi(s); e != nil {
+		p = ecslogs.INFO
+	} else {
+		p = ecslogs.Level(v)
+	}
+	return
+}
+
+func (r reader) getString(k string) (s string) {
+	s, _ = r.GetDataValue(k)
 	return
 }
