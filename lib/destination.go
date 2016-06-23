@@ -7,12 +7,12 @@ import (
 )
 
 type Destination interface {
-	Open(group string, stream string) (MessageBatchWriteCloser, error)
+	Open(group string, stream string) (Writer, error)
 }
 
-type DestinationFunc func(group string, stream string) (MessageBatchWriteCloser, error)
+type DestinationFunc func(group string, stream string) (Writer, error)
 
-func (f DestinationFunc) Open(group string, stream string) (MessageBatchWriteCloser, error) {
+func (f DestinationFunc) Open(group string, stream string) (Writer, error) {
 	return f(group, stream)
 }
 
@@ -51,7 +51,7 @@ func DestinationsAvailable() (destinations []string) {
 var (
 	dstmtx sync.RWMutex
 	dstmap = map[string]Destination{
-		"stdout": DestinationFunc(func(_ string, _ string) (MessageBatchWriteCloser, error) {
+		"stdout": DestinationFunc(func(_ string, _ string) (Writer, error) {
 			return NewMessageEncoder(os.Stdout), nil
 		}),
 	}

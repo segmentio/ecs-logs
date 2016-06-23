@@ -7,12 +7,12 @@ import (
 )
 
 type Source interface {
-	Open() (MessageReadCloser, error)
+	Open() (Reader, error)
 }
 
-type SourceFunc func() (MessageReadCloser, error)
+type SourceFunc func() (Reader, error)
 
-func (f SourceFunc) Open() (MessageReadCloser, error) {
+func (f SourceFunc) Open() (Reader, error) {
 	return f()
 }
 
@@ -51,7 +51,7 @@ func SourcesAvailable() (sources []string) {
 var (
 	srcmtx sync.RWMutex
 	srcmap = map[string]Source{
-		"stdin": SourceFunc(func() (MessageReadCloser, error) {
+		"stdin": SourceFunc(func() (Reader, error) {
 			return NewMessageDecoder(os.Stdin), nil
 		}),
 	}

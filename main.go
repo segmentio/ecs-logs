@@ -12,6 +12,7 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 
 	_ "github.com/segmentio/ecs-logs/lib/cloudwatchlogs"
+	_ "github.com/segmentio/ecs-logs/lib/loggly"
 	_ "github.com/segmentio/ecs-logs/lib/syslog"
 )
 
@@ -35,7 +36,7 @@ func main() {
 	var store = ecslogs.NewStore()
 	var source ecslogs.Source
 	var dest ecslogs.Destination
-	var reader ecslogs.MessageReadCloser
+	var reader ecslogs.Reader
 
 	if source = ecslogs.GetSource(src); source == nil {
 		fatalf("unknown log source (%s)", src)
@@ -93,7 +94,7 @@ func main() {
 	}
 }
 
-func read(r ecslogs.MessageReader, c chan<- ecslogs.Message) {
+func read(r ecslogs.Reader, c chan<- ecslogs.Message) {
 	defer close(c)
 
 	hostname, _ := os.Hostname()
@@ -121,16 +122,16 @@ func read(r ecslogs.MessageReader, c chan<- ecslogs.Message) {
 func write(dest ecslogs.Destination, group string, stream string, batch []ecslogs.Message, join *sync.WaitGroup) {
 	defer join.Done()
 
-	var w ecslogs.MessageBatchWriteCloser
+	var writer ecslogs.Writer
 	var err error
 
-	if w, err = dest.Open(group, stream); err != nil {
+	if writer, err = dest.Open(group, stream); err != nil {
 		errorf("dropping message batch of %d messages to %s::%s (%s)", len(batch), group, stream, err)
 		return
 	}
-	defer w.Close()
+	defer writer.Close()
 
-	if err = w.WriteMessageBatch(batch); err != nil {
+	if err = writer.WriteMessageBatch(batch); err != nil {
 		errorf("dropping message batch of %d messages to %s::%s (%s)", len(batch), group, stream, err)
 		return
 	}

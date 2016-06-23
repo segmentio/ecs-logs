@@ -2,6 +2,8 @@ package syslog
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -17,26 +19,30 @@ const (
 	DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
 )
 
-type DialConfig struct {
+type WriterConfig struct {
 	Network    string
 	Address    string
 	Template   string
 	TimeFormat string
+	TLS        *tls.Config
 }
 
-func NewMessageBatchWriter(group string, stream string) (ecslogs.MessageBatchWriteCloser, error) {
-	return DialWriter(DialConfig{})
+func NewWriter(group string, stream string) (ecslogs.Writer, error) {
+	return DialWriter(WriterConfig{})
 }
 
-func DialWriter(config DialConfig) (w ecslogs.MessageBatchWriteCloser, err error) {
+func DialWriter(config WriterConfig) (w ecslogs.Writer, err error) {
 	var netopts []string
 	var addropts []string
-	var conn net.Conn
+	var backend io.Writer
 
 	if len(config.Network) != 0 {
 		netopts = []string{config.Network}
 		addropts = []string{config.Address}
 	} else {
+		// This was copied from the standard log/syslog package, they do the same
+		// and try to guess at runtime where and what kind of socket syslogd is
+		// using.
 		netopts = []string{"unixgram", "unix"}
 		addropts = []string{"/dev/log", "/var/run/syslog", "/var/run/log"}
 	}
@@ -44,7 +50,7 @@ func DialWriter(config DialConfig) (w ecslogs.MessageBatchWriteCloser, err error
 connect:
 	for _, n := range netopts {
 		for _, a := range addropts {
-			if conn, err = net.Dial(n, a); err == nil {
+			if backend, err = dialWriter(n, a, config.TLS); err == nil {
 				break connect
 			}
 		}
@@ -54,33 +60,44 @@ connect:
 		return
 	}
 
-	w = NewWriter(WriterConfig{
-		Backend:    conn,
-		Template:   config.Template,
-		TimeFormat: config.TimeFormat,
+	w = newWriter(writerConfig{
+		backend:    backend,
+		template:   config.Template,
+		timeFormat: config.TimeFormat,
 	})
 	return
 }
 
-type WriterConfig struct {
-	Backend    io.Writer
-	Template   string
-	TimeFormat string
+type writerConfig struct {
+	backend    io.Writer
+	template   string
+	timeFormat string
 }
 
-func NewWriter(config WriterConfig) ecslogs.MessageBatchWriteCloser {
-	if len(config.TimeFormat) == 0 {
-		config.TimeFormat = time.Stamp
+func newWriter(config writerConfig) *writer {
+	var out func(*writer, message) error
+	var flush func() error
+
+	if len(config.timeFormat) == 0 {
+		config.timeFormat = time.Stamp
 	}
 
-	if len(config.Template) == 0 {
-		config.Template = DefaultTemplate
+	if len(config.template) == 0 {
+		config.template = DefaultTemplate
 	}
 
-	return syslogWriter{
-		WriterConfig: config,
-		buf:          bufio.NewWriter(config.Backend),
-		tpl:          newWriterTemplate(config.Template),
+	switch b := config.backend.(type) {
+	case bufferedWriter:
+		out, flush = (*writer).directWrite, b.Flush
+	default:
+		out, flush = (*writer).bufferedWrite, func() error { return nil }
+	}
+
+	return &writer{
+		writerConfig: config,
+		flush:        flush,
+		out:          out,
+		tpl:          newWriterTemplate(config.template),
 	}
 }
 
@@ -93,42 +110,46 @@ func newWriterTemplate(format string) *template.Template {
 	return t
 }
 
-type syslogWriter struct {
-	WriterConfig
-	buf *bufio.Writer
-	tpl *template.Template
+type writer struct {
+	writerConfig
+	buf   bytes.Buffer
+	tpl   *template.Template
+	out   func(*writer, message) error
+	flush func() error
 }
 
-func (w syslogWriter) Close() (err error) {
-	if err = w.buf.Flush(); err != nil {
-		return
-	}
-
-	if c, ok := w.Backend.(io.Closer); ok {
+func (w *writer) Close() (err error) {
+	if c, ok := w.backend.(io.Closer); ok {
 		err = c.Close()
 	}
-
 	return
 }
 
-func (w syslogWriter) WriteMessageBatch(batch []ecslogs.Message) (err error) {
+func (w *writer) WriteMessageBatch(batch []ecslogs.Message) (err error) {
 	for _, msg := range batch {
-		if err = w.WriteMessage(msg); err != nil {
+		if err = w.write(msg); err != nil {
 			return
 		}
 	}
+	return w.flush()
+}
+
+func (w *writer) WriteMessage(msg ecslogs.Message) (err error) {
+	if err = w.write(msg); err == nil {
+		err = w.flush()
+	}
 	return
 }
 
-func (w syslogWriter) WriteMessage(msg ecslogs.Message) (err error) {
-	m := syslogMessage{
-		PRIVAL:    int(msg.Level),
+func (w *writer) write(msg ecslogs.Message) (err error) {
+	m := message{
+		PRIVAL:    int(msg.Level) + 8, // +8 is for user-level messages facility
 		HOSTNAME:  msg.Host,
 		MSGID:     msg.ID,
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
 		MSG:       msg.Content,
-		TIMESTAMP: msg.Time.Format(w.TimeFormat),
+		TIMESTAMP: msg.Time.Format(w.timeFormat),
 	}
 
 	if len(m.HOSTNAME) == 0 {
@@ -149,14 +170,21 @@ func (w syslogWriter) WriteMessage(msg ecslogs.Message) (err error) {
 		m.SOURCE = fmt.Sprintf("%s:%s:%d", msg.File, msg.Func, msg.Line)
 	}
 
-	if err = w.tpl.Execute(w.buf, m); err == nil {
-		err = w.buf.Flush()
-	}
+	return w.out(w, m)
+}
 
+func (w *writer) directWrite(m message) (err error) {
+	return w.tpl.Execute(w.backend, m)
+}
+
+func (w *writer) bufferedWrite(m message) (err error) {
+	w.buf.Reset()
+	w.tpl.Execute(&w.buf, m)
+	_, err = w.backend.Write(w.buf.Bytes())
 	return
 }
 
-type syslogMessage struct {
+type message struct {
 	PRIVAL    int
 	HOSTNAME  string
 	PROCID    string
@@ -166,4 +194,41 @@ type syslogMessage struct {
 	MSG       string
 	SOURCE    string
 	TIMESTAMP string
+}
+
+type bufferedWriter interface {
+	Flush() error
+}
+
+type bufferedConn struct {
+	buf  *bufio.Writer
+	conn net.Conn
+}
+
+func (c bufferedConn) Close() error                { return c.conn.Close() }
+func (c bufferedConn) Flush() error                { return c.buf.Flush() }
+func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
+
+func dialWriter(network string, address string, config *tls.Config) (w io.Writer, err error) {
+	var conn net.Conn
+
+	if network == "tls" {
+		conn, err = tls.Dial("tcp", address, config)
+	} else {
+		conn, err = net.Dial(network, address)
+	}
+
+	if err == nil {
+		switch network {
+		case "udp", "udp4", "udp6", "unixgram", "unixpacket":
+			w = conn
+		default:
+			w = bufferedConn{
+				conn: conn,
+				buf:  bufio.NewWriter(conn),
+			}
+		}
+	}
+
+	return
 }

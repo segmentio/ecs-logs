@@ -1,6 +1,7 @@
 package ecslogs
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -78,24 +79,23 @@ func (lvl Level) String() string {
 	}
 }
 
-func (lvl Level) GoString() string {
-	return lvl.String()
-}
-
-func (lvl Level) MarshalText() (b []byte, err error) {
-	b = []byte(lvl.String())
-	return
-}
-
 func (lvl Level) MarshalJSON() (b []byte, err error) {
-	return lvl.MarshalText()
-}
-
-func (lvl *Level) UnmarshalText(b []byte) (err error) {
-	*lvl, err = ParseLevel(string(b))
-	return
+	return json.Marshal(lvl.String())
 }
 
 func (lvl *Level) UnmarshalJSON(b []byte) (err error) {
-	return lvl.UnmarshalText(b)
+	var v int
+	var s string
+
+	if err = json.Unmarshal(b, &v); err == nil {
+		*lvl = Level(v)
+		return
+	}
+
+	if err = json.Unmarshal(b, &s); err == nil {
+		*lvl, err = ParseLevel(s)
+		return
+	}
+
+	return
 }

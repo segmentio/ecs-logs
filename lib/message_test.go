@@ -51,12 +51,10 @@ func TestMessageEncoderDecover(t *testing.T) {
 	go func() {
 		if err := e.WriteMessageBatch(batch); err != nil {
 			t.Error(err)
-			return
 		}
 
 		if err := e.Close(); err != nil {
 			t.Error(err)
-			return
 		}
 	}()
 
