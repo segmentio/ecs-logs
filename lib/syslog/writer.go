@@ -55,26 +55,31 @@ func DialWriter(config WriterConfig) (w ecslogs.Writer, err error) {
 	var addropts []string
 	var backend io.Writer
 
-	if len(config.Address) != 0 {
-		if len(config.Network) != 0 {
-			netopts = []string{config.Network}
-		} else {
-			// When starting with a '/' we assume it's gonna be a file path,
-			// otherwise we fallback to trying a TLS connection so we don't
-			// implicitly send logs over an unsecured link.
-			if strings.HasPrefix(config.Address, "/") {
-				netopts = []string{"unixgram", "unix"}
-			} else {
-				netopts = []string{"tls"}
-			}
-		}
-		addropts = []string{config.Address}
+	if len(config.Network) != 0 {
+		netopts = []string{config.Network}
 	} else {
+		// When starting with a '/' we assume it's gonna be a file path,
+		// otherwise we fallback to trying a TLS connection so we don't
+		// implicitly send logs over an unsecured link.
+		if len(config.Address) == 0 || strings.HasPrefix(config.Address, "/") {
+			config.Network = "unix"
+			netopts = []string{"unixgram", "unix"}
+		} else {
+			netopts = []string{"tls"}
+		}
+	}
+
+	if len(config.Address) != 0 {
+		addropts = []string{config.Address}
+	} else if strings.HasPrefix(config.Network, "unix") {
 		// This was copied from the standard log/syslog package, they do the same
 		// and try to guess at runtime where and what kind of socket syslogd is
 		// using.
-		netopts = []string{"unixgram", "unix"}
 		addropts = []string{"/dev/log", "/var/run/syslog", "/var/run/log"}
+	} else {
+		// The config doesn't point to a unix domain socket, falling back to trying
+		// to connect to syslogd over a network interface.
+		addropts = []string{"localhost:514"}
 	}
 
 connect:
