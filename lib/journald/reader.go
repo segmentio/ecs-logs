@@ -35,12 +35,12 @@ func (r reader) ReadMessage() (msg ecslogs.Message, err error) {
 		var cur int
 		var ok bool
 
-		if cur, err = r.j.Next(); err != nil {
+		if cur, err = r.Next(); err != nil {
 			return
 		}
 
 		if cur == 0 {
-			r.j.Wait(sdjournal.IndefiniteWait)
+			r.Wait(sdjournal.IndefiniteWait)
 			continue
 		}
 
