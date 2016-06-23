@@ -86,7 +86,7 @@ func (r reader) getInt(k string) (v int) {
 
 func (r reader) getTime() (t time.Time) {
 	if u, e := r.GetRealtimeUsec(); e == nil {
-		t = time.Unix(int64(usec/1000000), int64((usec%1000000)*1000))
+		t = time.Unix(int64(u/1000000), int64((u%1000000)*1000))
 	}
 	return
 }
