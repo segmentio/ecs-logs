@@ -80,7 +80,7 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 }
 
 func (r reader) getInt(k string) (v int) {
-	if s, e := r.getString(j, k); e == nil {
+	if s, e := r.getString(k); e == nil {
 		v = strconv.Atoi(s)
 	}
 	return
@@ -94,7 +94,7 @@ func (r reader) getTime() (t time.Time) {
 }
 
 func (r reader) getPriority() (p ecslogs.Level) {
-	if s, e := r.getString(j, "PRIORITY"); e != nil {
+	if s, e := r.getString("PRIORITY"); e != nil {
 		p = ecslogs.INFO
 	} else if v, e := strconv.Atoi(s); e != nil {
 		p = ecslogs.INFO
