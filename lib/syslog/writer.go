@@ -26,6 +26,7 @@ type WriterConfig struct {
 	Address    string
 	Template   string
 	TimeFormat string
+	Tag        string
 	TLS        *tls.Config
 }
 
@@ -104,6 +105,7 @@ type writerConfig struct {
 	backend    io.Writer
 	template   string
 	timeFormat string
+	tag        string
 }
 
 func newWriter(config writerConfig) *writer {
@@ -182,6 +184,7 @@ func (w *writer) write(msg ecslogs.Message) (err error) {
 		STREAM:    msg.Stream,
 		MSG:       msg.Content,
 		TIMESTAMP: msg.Time.Format(w.timeFormat),
+		TAG:       w.tag,
 	}
 
 	if len(m.HOSTNAME) == 0 {
@@ -223,6 +226,7 @@ type message struct {
 	MSGID     string
 	GROUP     string
 	STREAM    string
+	TAG       string
 	MSG       string
 	SOURCE    string
 	TIMESTAMP string

@@ -18,6 +18,8 @@ func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
 	var token string
 	var pen string
 	var tags string
+	var template string
+	var timeFormat string
 
 	if endpoint, err = getEndpoint(); err != nil {
 		return
@@ -27,11 +29,20 @@ func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
 		return
 	}
 
+	if template = os.Getenv("LOGGLY_TEMPLATE"); len(template) == 0 {
+		template = "<{{.PRIVAL}}>1 {{.TIMESTAMP}} {{.HOSTNAME}} {{.GROUP}} {{.PROCID}} {{.MSGID}} [{{.TAG}}] {{.MSG}}"
+	}
+
+	if timeFormat = os.Getenv("LOGGLY_TIME_FORMAT"); len(timeFormat) == 0 {
+		timeFormat = "2006-01-02T15:04:05.999Z07:00"
+	}
+
 	return syslog.DialWriter(syslog.WriterConfig{
 		Network:    protocol,
 		Address:    address,
-		Template:   fmt.Sprintf("<{{.PRIVAL}}>1 {{.TIMESTAMP}} {{.HOSTNAME}} {{.GROUP}} {{.PROCID}} {{.MSGID}} [%s@%s %s] {{.MSG}}", token, pen, tags),
-		TimeFormat: "2006-01-02T15:04:05.999Z07:00",
+		Template:   template,
+		TimeFormat: timeFormat,
+		Tag:        fmt.Sprintf("%s@%s %s", token, pen, tags),
 		TLS: &tls.Config{
 			InsecureSkipVerify: true,
 		},
