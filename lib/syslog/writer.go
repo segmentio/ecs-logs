@@ -97,6 +97,7 @@ connect:
 		backend:    backend,
 		template:   config.Template,
 		timeFormat: config.TimeFormat,
+		tag:        config.Tag,
 	})
 	return
 }
