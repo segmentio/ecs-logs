@@ -3,6 +3,7 @@
 package journald
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -54,12 +55,14 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 	if msg.Group, err = r.GetDataValue("CONTAINER_TAG"); len(msg.Group) == 0 {
 		// No CONTAINER_TAG, this must be a journal message from a process that
 		// isn't running in a docker container.
+		err = nil
 		return
 	}
 
 	if msg.Stream, err = r.GetDataValue("CONTAINER_NAME"); err != nil {
 		// There's a CONTAINER_TAG but no CONTAINER_NAME, something is seriously
 		// wrong here, the log docker log driver is misbehaving.
+		err = fmt.Errorf("missing CONTAINER_NAME in message with CONTAINER_TAG=%s", msg.Group)
 		return
 	}
 
