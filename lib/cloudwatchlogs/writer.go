@@ -1,7 +1,8 @@
-package cwl
+package cloudwatchlogs
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -9,14 +10,14 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 )
 
-func NewMessageBatchWriter(group string, stream string) (w ecslogs.MessageBatchWriteCloser, err error) {
+func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
 	var region string
 
 	if region, err = getAwsRegion(); err != nil {
 		return
 	}
 
-	w = messageWriter{
+	w = writer{
 		group:  group,
 		stream: stream,
 		client: cloudwatchlogs.New(session.New(&aws.Config{
@@ -26,21 +27,21 @@ func NewMessageBatchWriter(group string, stream string) (w ecslogs.MessageBatchW
 	return
 }
 
-type messageWriter struct {
+type writer struct {
 	group  string
 	stream string
 	client *cloudwatchlogs.CloudWatchLogs
 }
 
-func (w messageWriter) Close() error {
+func (w writer) Close() error {
 	return nil
 }
 
-func (w messageWriter) WriteMessage(msg ecslogs.Message) error {
+func (w writer) WriteMessage(msg ecslogs.Message) error {
 	return w.WriteMessageBatch([]ecslogs.Message{msg})
 }
 
-func (w messageWriter) WriteMessageBatch(batch []ecslogs.Message) (err error) {
+func (w writer) WriteMessageBatch(batch []ecslogs.Message) (err error) {
 	var stream *cloudwatchlogs.LogStream
 
 	w.ensureCreateGroup()
@@ -53,14 +54,14 @@ func (w messageWriter) WriteMessageBatch(batch []ecslogs.Message) (err error) {
 	return w.writeBatch(stream, batch)
 }
 
-func (w messageWriter) ensureCreateGroup() {
+func (w writer) ensureCreateGroup() {
 	w.client.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 		LogGroupName: aws.String(w.group),
 	})
 	return
 }
 
-func (w messageWriter) ensureCreateStream() {
+func (w writer) ensureCreateStream() {
 	w.client.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 		LogGroupName:  aws.String(w.group),
 		LogStreamName: aws.String(w.stream),
@@ -68,7 +69,7 @@ func (w messageWriter) ensureCreateStream() {
 	return
 }
 
-func (w messageWriter) fetchStream() (stream *cloudwatchlogs.LogStream, err error) {
+func (w writer) fetchStream() (stream *cloudwatchlogs.LogStream, err error) {
 	var streams *cloudwatchlogs.DescribeLogStreamsOutput
 
 	if streams, err = w.client.DescribeLogStreams(&cloudwatchlogs.DescribeLogStreamsInput{
@@ -88,7 +89,7 @@ func (w messageWriter) fetchStream() (stream *cloudwatchlogs.LogStream, err erro
 	return
 }
 
-func (w messageWriter) writeBatch(stream *cloudwatchlogs.LogStream, batch []ecslogs.Message) (err error) {
+func (w writer) writeBatch(stream *cloudwatchlogs.LogStream, batch []ecslogs.Message) (err error) {
 	var events []*cloudwatchlogs.InputLogEvent
 
 	if events = makeLogEvents(batch); len(events) == 0 {
@@ -109,8 +110,13 @@ func makeLogEvents(batch []ecslogs.Message) (events []*cloudwatchlogs.InputLogEv
 
 	for _, msg := range batch {
 		if len(msg.Content) != 0 {
+			// Set the message properties to their zero-value so they are omitted when
+			// serialized to JSON by the String method.
+			msg.Group = ""
+			msg.Stream = ""
+			msg.Time = time.Time{}
 			events = append(events, &cloudwatchlogs.InputLogEvent{
-				Message:   aws.String(msg.Content),
+				Message:   aws.String(msg.String()),
 				Timestamp: aws.Int64(aws.TimeUnixMilli(msg.Time)),
 			})
 		}

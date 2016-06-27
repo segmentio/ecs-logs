@@ -18,6 +18,7 @@ type StreamLimits struct {
 	MaxCount int
 	MaxBytes int
 	MaxTime  time.Duration
+	Force    bool
 }
 
 func NewStream(name string, now time.Time) *Stream {
@@ -57,6 +58,10 @@ func (stream *Stream) Flush(limits StreamLimits, now time.Time) []Message {
 	}
 
 	if now.Sub(stream.flushedOn) >= limits.MaxTime {
+		return stream.flushDueToTimeLimit(now)
+	}
+
+	if limits.Force {
 		return stream.flushDueToTimeLimit(now)
 	}
 
