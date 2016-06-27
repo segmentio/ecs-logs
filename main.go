@@ -144,6 +144,7 @@ func read(r ecslogs.Reader, c chan<- ecslogs.Message, counter *int32, hostname s
 				break
 			}
 			errorf("the message reader failed (%s)", err)
+			continue
 		}
 
 		if len(msg.Host) == 0 {
