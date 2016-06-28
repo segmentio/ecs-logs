@@ -2,6 +2,7 @@ package ecslogs
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"testing"
@@ -9,15 +10,16 @@ import (
 )
 
 func TestMessageString(t *testing.T) {
+	d := time.Date(2016, 6, 13, 12, 23, 42, 123456000, time.Local)
 	m := Message{
 		Level:   INFO,
 		Group:   "abc",
 		Stream:  "0123456789",
 		Content: "Hello World!",
-		Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
+		Time:    MakeTimestamp(d),
 	}
 
-	const ref = `{"level":"INFO","group":"abc","stream":"0123456789","content":"Hello World!","time":"2016-06-13T12:23:42.123456789Z"}`
+	ref := fmt.Sprintf(`{"level":"INFO","group":"abc","stream":"0123456789","content":"Hello World!","time":"%s"}`, d.Format(time.RFC3339Nano))
 
 	if s := m.String(); s != ref {
 		t.Errorf("invalid string representation of the message:\n - expected: %s\n - found:    %s", ref, s)
@@ -31,14 +33,14 @@ func TestMessageEncoderDecover(t *testing.T) {
 			Group:   "abc",
 			Stream:  "0123456789",
 			Content: "Hello World!",
-			Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
+			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)),
 		},
 		Message{
 			Level:   INFO,
 			Group:   "abc",
 			Stream:  "0123456789",
 			Content: "How are you doing?",
-			Time:    time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC),
+			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)),
 		},
 	}
 
@@ -90,14 +92,14 @@ func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
 			Group:   "abc",
 			Stream:  "0123456789",
 			Content: "Hello World!",
-			Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
+			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)),
 		},
 		Message{
 			Level:   INFO,
 			Group:   "abc",
 			Stream:  "0123456789",
 			Content: "How are you doing?",
-			Time:    time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC),
+			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)),
 		},
 	}
 

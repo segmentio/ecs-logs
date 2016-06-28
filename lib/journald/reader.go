@@ -87,9 +87,9 @@ func (r reader) getInt(k string) (v int) {
 	return
 }
 
-func (r reader) getTime() (t time.Time) {
+func (r reader) getTime() (t ecslogs.Timestamp) {
 	if u, e := r.GetRealtimeUsec(); e == nil {
-		t = time.Unix(int64(u/1000000), int64((u%1000000)*1000))
+		t = ecslogs.MakeTimestamp(time.Unix(int64(u/1000000), int64((u%1000000)*1000)))
 	}
 	return
 }
