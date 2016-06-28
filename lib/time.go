@@ -81,10 +81,3 @@ var (
 		time.RFC3339,
 	}
 )
-
-const (
-	secondsPerMinute       = 60
-	secondsPerHour         = 60 * 60
-	secondsPerDay          = 24 * secondsPerHour
-	unixToInternal   int64 = (1969*365 + 1969/4 - 1969/100 + 1969/400) * secondsPerDay
-)
