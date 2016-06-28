@@ -15,7 +15,7 @@ func ParseTimestamp(s string) (ts Timestamp, err error) {
 	var t time.Time
 
 	for _, format := range timeFormats {
-		if t, err = time.ParseInLocation(format, s, time.UTC); err == nil {
+		if t, err = time.Parse(format, s); err == nil {
 			ts = MakeTimestamp(t)
 			break
 		}
@@ -25,7 +25,6 @@ func ParseTimestamp(s string) (ts Timestamp, err error) {
 }
 
 func MakeTimestamp(t time.Time) Timestamp {
-	t = t.UTC()
 	return Timestamp(t.Unix()*1000000) + Timestamp(t.Nanosecond()/1000)
 }
 
@@ -53,14 +52,12 @@ func (ts Timestamp) Nanoseconds() int64 {
 	return int64(ts * 1000)
 }
 
-func (ts Timestamp) Time(tz *time.Location) time.Time {
-	t1 := time.Unix(ts.Seconds(), ts.Nanoseconds()%1000000000)
-	t2 := t1.In(tz)
-	return t2.Add(t1.Sub(t2))
+func (ts Timestamp) Time() time.Time {
+	return time.Unix(ts.Seconds(), ts.Nanoseconds()%1000000000)
 }
 
 func (ts Timestamp) Format(format string) string {
-	return ts.Time(time.UTC).Format(format)
+	return ts.Time().Format(format)
 }
 
 func (ts Timestamp) MarshalText() (b []byte, err error) {
