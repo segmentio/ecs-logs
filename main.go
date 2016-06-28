@@ -17,6 +17,21 @@ import (
 	_ "github.com/segmentio/ecs-logs/lib/syslog"
 )
 
+type source struct {
+	ecslogs.Source
+	name string
+}
+
+type destination struct {
+	ecslogs.Destination
+	name string
+}
+
+type reader struct {
+	ecslogs.Reader
+	name string
+}
+
 func main() {
 	var err error
 	var src string
@@ -35,15 +50,15 @@ func main() {
 	flag.Parse()
 
 	var store = ecslogs.NewStore()
-	var sources []ecslogs.Source
-	var dests []ecslogs.Destination
-	var readers []ecslogs.Reader
+	var sources []source
+	var dests []destination
+	var readers []reader
 
-	if sources = ecslogs.GetSources(strings.Split(src, ",")...); len(sources) == 0 {
+	if sources = getSources(strings.Split(src, ",")); len(sources) == 0 {
 		fatalf("no or invalid log sources")
 	}
 
-	if dests = ecslogs.GetDestinations(strings.Split(dst, ",")...); len(dests) == 0 {
+	if dests = getDestinations(strings.Split(dst, ",")); len(dests) == 0 {
 		fatalf("no or invalid log destinations")
 	}
 
@@ -95,14 +110,37 @@ func main() {
 	}
 }
 
-func openSources(sources []ecslogs.Source) (readers []ecslogs.Reader, err error) {
-	readers = make([]ecslogs.Reader, 0, len(sources))
+func getSources(names []string) (sources []source) {
+	for i, src := range ecslogs.GetSources(names...) {
+		sources = append(sources, source{
+			Source: src,
+			name:   names[i],
+		})
+	}
+	return
+}
+
+func getDestinations(names []string) (destinations []destination) {
+	for i, dst := range ecslogs.GetDestinations(names...) {
+		destinations = append(destinations, destination{
+			Destination: dst,
+			name:        names[i],
+		})
+	}
+	return
+}
+
+func openSources(sources []source) (readers []reader, err error) {
+	readers = make([]reader, 0, len(sources))
 
 	for _, source := range sources {
 		if r, e := source.Open(); e != nil {
-			errorf("failed to open log source (%s)", err)
+			errorf("failed to open log source (%s: %s)", source.name, e)
 		} else {
-			readers = append(readers, r)
+			readers = append(readers, reader{
+				Reader: r,
+				name:   source.name,
+			})
 		}
 	}
 
@@ -113,7 +151,7 @@ func openSources(sources []ecslogs.Source) (readers []ecslogs.Reader, err error)
 	return
 }
 
-func startReaders(readers []ecslogs.Reader, msgchan chan<- ecslogs.Message, counter *int32) {
+func startReaders(readers []reader, msgchan chan<- ecslogs.Message, counter *int32) {
 	hostname, _ := os.Hostname()
 
 	for _, reader := range readers {
@@ -121,7 +159,7 @@ func startReaders(readers []ecslogs.Reader, msgchan chan<- ecslogs.Message, coun
 	}
 }
 
-func stopReaders(readers []ecslogs.Reader) {
+func stopReaders(readers []reader) {
 	for _, reader := range readers {
 		reader.Close()
 	}
@@ -133,7 +171,7 @@ func term(c chan<- ecslogs.Message, counter *int32) {
 	}
 }
 
-func read(r ecslogs.Reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
+func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 	defer term(c, counter)
 	for {
 		var msg ecslogs.Message
@@ -143,7 +181,7 @@ func read(r ecslogs.Reader, c chan<- ecslogs.Message, counter *int32, hostname s
 			if err == io.EOF {
 				break
 			}
-			errorf("the message reader failed (%s)", err)
+			errorf("the message reader failed (%s: %s)", r.name, err)
 			continue
 		}
 
@@ -159,25 +197,25 @@ func read(r ecslogs.Reader, c chan<- ecslogs.Message, counter *int32, hostname s
 	}
 }
 
-func write(dest ecslogs.Destination, group string, stream string, batch []ecslogs.Message, join *sync.WaitGroup) {
+func write(dest destination, group string, stream string, batch []ecslogs.Message, join *sync.WaitGroup) {
 	defer join.Done()
 
 	var writer ecslogs.Writer
 	var err error
 
 	if writer, err = dest.Open(group, stream); err != nil {
-		errorf("dropping message batch of %d messages to %s::%s (%s)", len(batch), group, stream, err)
+		errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest.name, err)
 		return
 	}
 	defer writer.Close()
 
 	if err = writer.WriteMessageBatch(batch); err != nil {
-		errorf("dropping message batch of %d messages to %s::%s (%s)", len(batch), group, stream, err)
+		errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest.name, err)
 		return
 	}
 }
 
-func flush(dests []ecslogs.Destination, group *ecslogs.Group, stream *ecslogs.Stream, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
+func flush(dests []destination, group *ecslogs.Group, stream *ecslogs.Stream, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	for {
 		batch, reason := stream.Flush(limits, now)
 
@@ -194,7 +232,7 @@ func flush(dests []ecslogs.Destination, group *ecslogs.Group, stream *ecslogs.St
 	}
 }
 
-func flushAll(dests []ecslogs.Destination, store *ecslogs.Store, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
+func flushAll(dests []destination, store *ecslogs.Store, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	store.ForEach(func(group *ecslogs.Group) {
 		group.ForEach(func(stream *ecslogs.Stream) {
 			flush(dests, group, stream, limits, now, join)
