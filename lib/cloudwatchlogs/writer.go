@@ -112,12 +112,13 @@ func makeLogEvents(batch []ecslogs.Message) (events []*cloudwatchlogs.InputLogEv
 		if len(msg.Content) != 0 {
 			// Set the message properties to their zero-value so they are omitted when
 			// serialized to JSON by the String method.
+			timestamp := msg.Time
 			msg.Group = ""
 			msg.Stream = ""
 			msg.Time = time.Time{}
 			events = append(events, &cloudwatchlogs.InputLogEvent{
 				Message:   aws.String(msg.String()),
-				Timestamp: aws.Int64(aws.TimeUnixMilli(msg.Time)),
+				Timestamp: aws.Int64(aws.TimeUnixMilli(timestamp)),
 			})
 		}
 	}
