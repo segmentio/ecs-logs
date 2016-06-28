@@ -151,8 +151,8 @@ func read(r ecslogs.Reader, c chan<- ecslogs.Message, counter *int32, hostname s
 			msg.Host = hostname
 		}
 
-		if msg.Time == (time.Time{}) {
-			msg.Time = time.Now()
+		if msg.Time == 0 {
+			msg.Time = ecslogs.Now()
 		}
 
 		c <- msg

@@ -3,7 +3,6 @@ package ecslogs
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 )
 
 type Message struct {
@@ -20,7 +19,7 @@ type Message struct {
 	Group   string    `json:"group,omitempty"`
 	Stream  string    `json:"stream,omitempty"`
 	Content string    `json:"content,omitempty"`
-	Time    time.Time `json:"time,omitempty"`
+	Time    Timestamp `json:"time,omitempty"`
 }
 
 func (m Message) String() string {

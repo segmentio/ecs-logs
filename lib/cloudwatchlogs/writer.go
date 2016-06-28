@@ -2,7 +2,6 @@ package cloudwatchlogs
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -112,13 +111,13 @@ func makeLogEvents(batch []ecslogs.Message) (events []*cloudwatchlogs.InputLogEv
 		if len(msg.Content) != 0 {
 			// Set the message properties to their zero-value so they are omitted when
 			// serialized to JSON by the String method.
-			timestamp := msg.Time
+			ts := msg.Time
 			msg.Group = ""
 			msg.Stream = ""
-			msg.Time = time.Time{}
+			msg.Time = 0
 			events = append(events, &cloudwatchlogs.InputLogEvent{
 				Message:   aws.String(msg.String()),
-				Timestamp: aws.Int64(aws.TimeUnixMilli(timestamp)),
+				Timestamp: aws.Int64(ts.Milliseconds()),
 			})
 		}
 	}
