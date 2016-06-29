@@ -178,8 +178,15 @@ func write(dest ecslogs.Destination, group string, stream string, batch []ecslog
 }
 
 func flush(dests []ecslogs.Destination, group *ecslogs.Group, stream *ecslogs.Stream, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
-	if batch := stream.Flush(limits, now); len(batch) != 0 {
-		logf("flushing %d messages to %s::%s", len(batch), group.Name(), stream.Name())
+	for {
+		batch, reason := stream.Flush(limits, now)
+
+		if len(batch) == 0 {
+			break
+		}
+
+		logf("flushing %d messages to %s::%s (%s)", len(batch), group.Name(), stream.Name(), reason)
+
 		for _, dest := range dests {
 			join.Add(1)
 			go write(dest, group.Name(), stream.Name(), batch, join)
