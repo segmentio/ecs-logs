@@ -13,7 +13,12 @@ func (c Content) String() string {
 }
 
 func (c Content) MarshalJSON() (b []byte, err error) {
-	return json.Marshal(c.Value)
+	if c.Value == nil && c.Raw != nil {
+		b = c.Raw
+	} else {
+		b, err = json.Marshal(c.Value)
+	}
+	return
 }
 
 func (c *Content) UnmarshalJSON(b []byte) (err error) {
