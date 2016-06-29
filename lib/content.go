@@ -4,7 +4,7 @@ import "encoding/json"
 
 type Content struct {
 	Raw   []byte
-	Value interface{}
+	Value map[string]interface{}
 }
 
 func (c Content) String() string {
@@ -13,10 +13,7 @@ func (c Content) String() string {
 }
 
 func (c Content) MarshalJSON() (b []byte, err error) {
-	if b = c.Raw; len(b) == 0 {
-		b, err = json.Marshal(c.Value)
-	}
-	return
+	return json.Marshal(c.Value)
 }
 
 func (c *Content) UnmarshalJSON(b []byte) (err error) {

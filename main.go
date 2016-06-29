@@ -193,6 +193,7 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 			msg.Time = ecslogs.Now()
 		}
 
+		msg.ExtractContentMetadata()
 		c <- msg
 	}
 }
