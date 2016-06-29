@@ -3,6 +3,7 @@
 package journald
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -76,7 +77,7 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 	msg.File = r.getString("CODE_FILE")
 	msg.ID = r.getString("MESSAGE_ID")
 	msg.Host = r.getString("_HOSTNAME")
-	msg.Content = r.getString("MESSAGE")
+	msg.Content = r.getContent("MESSAGE")
 	msg.Time = r.getTime()
 	ok = true
 	return
@@ -105,5 +106,10 @@ func (r reader) getPriority() (p ecslogs.Level) {
 
 func (r reader) getString(k string) (s string) {
 	s, _ = r.GetDataValue(k)
+	return
+}
+
+func (r reader) getObject(k string) (v ecslogs.Content) {
+	json.Unmarshal([]byte(r.getString(k)), &v)
 	return
 }

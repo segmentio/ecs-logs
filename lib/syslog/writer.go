@@ -183,7 +183,7 @@ func (w *writer) write(msg ecslogs.Message) (err error) {
 		MSGID:     msg.ID,
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
-		MSG:       msg.Content,
+		MSG:       msg.Content.String(),
 		TIMESTAMP: msg.Time.Format(w.timeFormat),
 		TAG:       w.tag,
 	}

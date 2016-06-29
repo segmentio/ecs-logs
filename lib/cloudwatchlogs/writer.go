@@ -108,7 +108,7 @@ func makeLogEvents(batch []ecslogs.Message) (events []*cloudwatchlogs.InputLogEv
 	events = make([]*cloudwatchlogs.InputLogEvent, 0, len(batch))
 
 	for _, msg := range batch {
-		if len(msg.Content) != 0 {
+		if len(msg.Content.Raw) != 0 {
 			// Set the message properties to their zero-value so they are omitted when
 			// serialized to JSON by the String method.
 			ts := msg.Time

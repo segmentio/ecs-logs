@@ -18,7 +18,7 @@ type Message struct {
 	Host    string    `json:"host,omitempty"`
 	Group   string    `json:"group,omitempty"`
 	Stream  string    `json:"stream,omitempty"`
-	Content string    `json:"content,omitempty"`
+	Content Content   `json:"content"`
 	Time    Timestamp `json:"time,omitempty"`
 }
 

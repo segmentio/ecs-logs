@@ -241,7 +241,7 @@ func flushAll(dests []destination, store *ecslogs.Store, limits ecslogs.StreamLi
 }
 
 func fatalf(format string, args ...interface{}) {
-	errorf(format, args...)
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
 }
 
