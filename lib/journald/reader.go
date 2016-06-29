@@ -108,6 +108,6 @@ func (r reader) getString(k string) (s string) {
 	return
 }
 
-func (r reader) getObject(k string) (c ecslogs.Content) {
+func (r reader) getContent(k string) (c ecslogs.Content) {
 	return ecslogs.MakeContent(r.getString(k))
 }
