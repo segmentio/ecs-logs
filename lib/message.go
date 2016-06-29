@@ -44,47 +44,47 @@ func (m *Message) ExtractContentMetadata() {
 
 	if tmp.Level != 0 {
 		m.Level = tmp.Level
-		delete(tmp.Content.Value, "level")
+		delete(m.Content.Value, "level")
 	}
 
 	if tmp.PID != 0 {
 		m.PID = tmp.PID
-		delete(tmp.Content.Value, "pid")
+		delete(m.Content.Value, "pid")
 	}
 
 	if tmp.UID != 0 {
 		m.UID = tmp.UID
-		delete(tmp.Content.Value, "uid")
+		delete(m.Content.Value, "uid")
 	}
 
 	if tmp.GID != 0 {
 		m.GID = tmp.GID
-		delete(tmp.Content.Value, "gid")
+		delete(m.Content.Value, "gid")
 	}
 
 	if tmp.Errno != 0 {
 		m.Errno = tmp.Errno
-		delete(tmp.Content.Value, "errno")
+		delete(m.Content.Value, "errno")
 	}
 
 	if tmp.Line != 0 {
 		m.Line = tmp.Line
-		delete(tmp.Content.Value, "line")
+		delete(m.Content.Value, "line")
 	}
 
 	if len(tmp.Func) != 0 {
 		m.Func = tmp.Func
-		delete(tmp.Content.Value, "func")
+		delete(m.Content.Value, "func")
 	}
 
 	if len(tmp.File) != 0 {
 		m.File = tmp.File
-		delete(tmp.Content.Value, "file")
+		delete(m.Content.Value, "file")
 	}
 
 	if len(tmp.ID) != 0 {
 		m.ID = tmp.ID
-		delete(tmp.Content.Value, "id")
+		delete(m.Content.Value, "id")
 	}
 
 	// Host, Group, Stream, Content and Time cannot be overwritten by the fields
