@@ -2,7 +2,6 @@ package cloudwatchlogs
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -102,10 +101,8 @@ func (w *writer) WriteMessageBatch(batch []ecslogs.Message) (err error) {
 
 func parseInvalidSequenceTokenException(err error) (token *string) {
 	msg := err.Error()
-	fmt.Println("<<<", msg)
 
 	if !strings.HasPrefix(msg, "InvalidSequenceTokenException:") {
-		fmt.Println("no prefix")
 		return
 	}
 
@@ -116,12 +113,10 @@ func parseInvalidSequenceTokenException(err error) (token *string) {
 	parts := strings.Split(msg, ":")
 
 	if len(parts) < 3 {
-		fmt.Println("bad parts count:", len(parts))
 		return
 	}
 
 	s := strings.TrimSpace(parts[2])
-	fmt.Println(">>>", s)
 	token = &s
 	return
 }
