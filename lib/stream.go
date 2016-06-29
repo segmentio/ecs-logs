@@ -27,6 +27,7 @@ func NewStream(name string, now time.Time) *Stream {
 		messages:  make([]Message, 0, 1000),
 		createdOn: now,
 		updatedOn: now,
+		flushedOn: now,
 	}
 }
 
