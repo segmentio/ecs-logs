@@ -39,7 +39,7 @@ func (stream *Stream) Name() string {
 }
 
 func (stream *Stream) Add(msg Message, now time.Time) {
-	stream.bytes += len(msg.Content.Raw)
+	stream.bytes += msg.ContentLength()
 	stream.messages = append(stream.messages, msg)
 	stream.updatedOn = now
 }
@@ -73,10 +73,13 @@ func (stream *Stream) flushDueToBytesLimit(maxBytes int, now time.Time) []Messag
 	bytes := 0
 
 	for _, msg := range stream.messages {
-		if (bytes + len(msg.Content.Raw)) > maxBytes {
+		length := msg.ContentLength()
+
+		if (bytes + length) > maxBytes {
 			break
 		}
-		bytes += len(msg.Content.Raw)
+
+		bytes += length
 		count += 1
 	}
 

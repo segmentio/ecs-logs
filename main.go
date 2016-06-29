@@ -185,6 +185,16 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 			continue
 		}
 
+		if len(msg.Group) == 0 {
+			errorf("dropping %s message because the group property wasn't set", r.name)
+			continue
+		}
+
+		if len(msg.Stream) == 0 {
+			errorf("dropping %s message because the stream property wasn't set", r.name)
+			continue
+		}
+
 		if len(msg.Host) == 0 {
 			msg.Host = hostname
 		}

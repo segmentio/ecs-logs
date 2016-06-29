@@ -15,7 +15,7 @@ func TestMessageString(t *testing.T) {
 		Level:   INFO,
 		Group:   "abc",
 		Stream:  "0123456789",
-		Content: MakeContent("Hello World!"),
+		Content: "Hello World!",
 		Time:    MakeTimestamp(d),
 	}
 
@@ -32,14 +32,14 @@ func TestMessageEncoderDecover(t *testing.T) {
 			Level:   INFO,
 			Group:   "abc",
 			Stream:  "0123456789",
-			Content: MakeContent("Hello World!"),
+			Content: "Hello World!",
 			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)),
 		},
 		Message{
 			Level:   INFO,
 			Group:   "abc",
 			Stream:  "0123456789",
-			Content: MakeContent("How are you doing?"),
+			Content: "How are you doing?",
 			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)),
 		},
 	}
@@ -91,14 +91,14 @@ func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
 			Level:   INFO,
 			Group:   "abc",
 			Stream:  "0123456789",
-			Content: MakeContent("Hello World!"),
+			Content: "Hello World!",
 			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)),
 		},
 		Message{
 			Level:   INFO,
 			Group:   "abc",
 			Stream:  "0123456789",
-			Content: MakeContent("How are you doing?"),
+			Content: "How are you doing?",
 			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)),
 		},
 	}

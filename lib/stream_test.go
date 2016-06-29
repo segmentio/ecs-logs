@@ -88,7 +88,7 @@ func TestStreamNotExpiredDueToMessages(t *testing.T) {
 	st.Add(Message{
 		Group:   "abc",
 		Stream:  "0123456789",
-		Content: MakeContent("Hello World!"),
+		Content: "Hello World!",
 		Time:    MakeTimestamp(ts),
 	}, ts)
 

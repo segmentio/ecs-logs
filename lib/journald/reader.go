@@ -3,6 +3,7 @@
 package journald
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -108,6 +109,17 @@ func (r reader) getString(k string) (s string) {
 	return
 }
 
-func (r reader) getContent(k string) (c ecslogs.Content) {
-	return ecslogs.MakeContent(r.getString(k))
+func (r reader) getContent(k string) (v interface{}) {
+	var s string
+	var e error
+
+	if s, e = r.GetDataValue(); e != nil {
+		return
+	}
+
+	if json.Unmarshal([]byte(s), &v) != nil {
+		v = s
+	}
+
+	return
 }
