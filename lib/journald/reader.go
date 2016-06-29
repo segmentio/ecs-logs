@@ -113,7 +113,7 @@ func (r reader) getContent(k string) (v interface{}) {
 	var s string
 	var e error
 
-	if s, e = r.GetDataValue(); e != nil {
+	if s, e = r.GetDataValue(k); e != nil {
 		return
 	}
 
