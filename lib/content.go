@@ -1,10 +1,18 @@
 package ecslogs
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 type Content struct {
 	Raw   []byte
 	Value map[string]interface{}
+}
+
+func MakeContent(s string) (c Content) {
+	c.Raw = []byte(strconv.Quote(s))
+	return
 }
 
 func (c Content) String() string {
@@ -13,7 +21,7 @@ func (c Content) String() string {
 }
 
 func (c Content) MarshalJSON() (b []byte, err error) {
-	if c.Value == nil && c.Raw != nil {
+	if c.Value == nil {
 		b = c.Raw
 	} else {
 		b, err = json.Marshal(c.Value)
