@@ -185,6 +185,16 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 			continue
 		}
 
+		if len(msg.Group) == 0 {
+			errorf("dropping %s message because the group property wasn't set", r.name)
+			continue
+		}
+
+		if len(msg.Stream) == 0 {
+			errorf("dropping %s message because the stream property wasn't set", r.name)
+			continue
+		}
+
 		if len(msg.Host) == 0 {
 			msg.Host = hostname
 		}
@@ -193,6 +203,7 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 			msg.Time = ecslogs.Now()
 		}
 
+		msg.ExtractContentMetadata()
 		c <- msg
 	}
 }
@@ -241,7 +252,7 @@ func flushAll(dests []destination, store *ecslogs.Store, limits ecslogs.StreamLi
 }
 
 func fatalf(format string, args ...interface{}) {
-	errorf(format, args...)
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
 }
 

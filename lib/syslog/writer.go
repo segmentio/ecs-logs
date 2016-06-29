@@ -183,7 +183,6 @@ func (w *writer) write(msg ecslogs.Message) (err error) {
 		MSGID:     msg.ID,
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
-		MSG:       msg.Content,
 		TIMESTAMP: msg.Time.Format(w.timeFormat),
 		TAG:       w.tag,
 	}
@@ -202,9 +201,12 @@ func (w *writer) write(msg ecslogs.Message) (err error) {
 		m.PROCID = strconv.Itoa(msg.PID)
 	}
 
-	if len(msg.File) != 0 || len(msg.Func) != 0 {
-		m.SOURCE = fmt.Sprintf("%s:%s:%d", msg.File, msg.Func, msg.Line)
-	}
+	// Set the message properties to their zero-value so they are omitted when
+	// serialized to JSON by the String method.
+	msg.Time = 0
+	msg.Group = ""
+	msg.Stream = ""
+	m.MSG = msg.String()
 
 	return w.out(w, m)
 }
@@ -229,7 +231,6 @@ type message struct {
 	STREAM    string
 	TAG       string
 	MSG       string
-	SOURCE    string
 	TIMESTAMP string
 }
 

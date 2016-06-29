@@ -1,7 +1,6 @@
 package ecslogs
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,7 +9,8 @@ import (
 type Level int
 
 const (
-	EMERGENCY Level = iota
+	UNKNOWN Level = iota
+	EMERGENCY
 	ALERT
 	CRITICAL
 	ERROR
@@ -47,11 +47,7 @@ func ParseLevel(s string) (lvl Level, err error) {
 	case "DEBUG":
 		lvl = DEBUG
 	default:
-		if v, e := strconv.ParseInt(s, 10, 64); e != nil {
-			err = ParseLevelError{s}
-		} else {
-			lvl = Level(v)
-		}
+		err = ParseLevelError{s}
 	}
 	return
 }
@@ -75,27 +71,20 @@ func (lvl Level) String() string {
 	case DEBUG:
 		return "DEBUG"
 	default:
-		return strconv.Itoa(int(lvl))
+		return lvl.GoString()
 	}
 }
 
-func (lvl Level) MarshalJSON() (b []byte, err error) {
-	return json.Marshal(lvl.String())
+func (lvl Level) GoString() string {
+	return "Level(" + strconv.Itoa(int(lvl)) + ")"
 }
 
-func (lvl *Level) UnmarshalJSON(b []byte) (err error) {
-	var v int
-	var s string
+func (lvl Level) MarshalText() (b []byte, err error) {
+	b = []byte(lvl.String())
+	return
+}
 
-	if err = json.Unmarshal(b, &v); err == nil {
-		*lvl = Level(v)
-		return
-	}
-
-	if err = json.Unmarshal(b, &s); err == nil {
-		*lvl, err = ParseLevel(s)
-		return
-	}
-
+func (lvl *Level) UnmarshalText(b []byte) (err error) {
+	*lvl, err = ParseLevel(string(b))
 	return
 }
