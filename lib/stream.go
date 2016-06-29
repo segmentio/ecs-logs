@@ -48,41 +48,36 @@ func (stream *Stream) HasExpired(timeout time.Duration, now time.Time) bool {
 	return len(stream.messages) == 0 && now.Sub(stream.updatedOn) >= timeout
 }
 
-func (stream *Stream) Flush(limits StreamLimits, now time.Time) []Message {
+func (stream *Stream) Flush(limits StreamLimits, now time.Time) (list []Message, reason string) {
 	if stream.bytes >= limits.MaxBytes {
-		return stream.flushDueToBytesLimit(limits.MaxBytes, now)
+		return stream.flushDueToBytesLimit(limits.MaxBytes, now), "max batch size exceeded"
 	}
 
 	if len(stream.messages) >= limits.MaxCount {
-		return stream.flushDueToCountLimit(limits.MaxCount, now)
+		return stream.flushDueToCountLimit(limits.MaxCount, now), "max message count exceeded"
 	}
 
 	if now.Sub(stream.flushedOn) >= limits.MaxTime {
-		return stream.flushDueToTimeLimit(now)
+		return stream.flushDueToTimeLimit(now), "time limit exceeded"
 	}
 
 	if limits.Force {
-		return stream.flushDueToTimeLimit(now)
+		return stream.flushDueToForcedFlushing(now), "forced flushing"
 	}
 
-	return nil
+	return
 }
 
 func (stream *Stream) flushDueToBytesLimit(maxBytes int, now time.Time) []Message {
 	count := 0
+	bytes := 0
 
-	if stream.bytes <= maxBytes {
-		count = len(stream.messages)
-	} else {
-		bytes := 0
-
-		for _, msg := range stream.messages {
-			if (bytes + len(msg.Content)) > maxBytes {
-				break
-			}
-			bytes += len(msg.Content)
-			count += 1
+	for _, msg := range stream.messages {
+		if (bytes + len(msg.Content)) > maxBytes {
+			break
 		}
+		bytes += len(msg.Content)
+		count += 1
 	}
 
 	return stream.flush(count, now)
@@ -93,6 +88,10 @@ func (stream *Stream) flushDueToCountLimit(maxCount int, now time.Time) []Messag
 }
 
 func (stream *Stream) flushDueToTimeLimit(now time.Time) []Message {
+	return stream.flush(len(stream.messages), now)
+}
+
+func (stream *Stream) flushDueToForcedFlushing(now time.Time) []Message {
 	return stream.flush(len(stream.messages), now)
 }
 
