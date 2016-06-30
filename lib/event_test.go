@@ -3,6 +3,7 @@ package ecslogs
 import (
 	"errors"
 	"io"
+	"syscall"
 	"testing"
 )
 
@@ -67,6 +68,15 @@ func TestEventErrors(t *testing.T) {
 		eventTest{
 			e: Eprint(errors.New("A"), errors.New("B")),
 			s: `{"errors":[{"type":"*errors.errorString","error":"A"},{"type":"*errors.errorString","error":"B"}],"message":"A B"}`,
+		},
+	)
+}
+
+func TestEventErrno(t *testing.T) {
+	testEvents(t,
+		eventTest{
+			e: Eprint(syscall.Errno(2)),
+			s: `{"errno":2,"errors":[{"type":"syscall.Errno","error":"no such file or directory"}],"message":"no such file or directory"}`,
 		},
 	)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"syscall"
 )
 
 type Event map[string]interface{}
@@ -19,6 +20,7 @@ const (
 	eventSourceKey  = "source"
 	eventMessageKey = "message"
 	eventErrorsKey  = "errors"
+	eventErrnoKey   = "errno"
 )
 
 func NewEvent(tags ...Tag) Event {
@@ -100,6 +102,8 @@ func (e Event) setValues(args ...interface{}) Event {
 
 func (e Event) setValue(arg interface{}) Event {
 	switch v := arg.(type) {
+	case syscall.Errno:
+		return e.addError(v).addErrno(v)
 	case error:
 		return e.addError(v)
 	}
@@ -119,6 +123,11 @@ func (e Event) addError(err error) Event {
 	} else {
 		e[eventErrorsKey] = append(errors.([]eventError), makeEventError(err))
 	}
+	return e
+}
+
+func (e Event) addErrno(errno syscall.Errno) Event {
+	e[eventErrnoKey] = int(errno)
 	return e
 }
 
