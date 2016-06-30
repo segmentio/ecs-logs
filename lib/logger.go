@@ -6,34 +6,72 @@ import (
 )
 
 type Logger struct {
-	output io.Writer
+	level  Level
+	output LoggerOutput
 	depth  int
+	event  Event
 	caller func(int) (string, int, string, bool)
 }
 
 type LoggerConfig struct {
-	Output io.Writer
+	Level  Level
+	Output LoggerOutput
 	Depth  int
-
-	// This field is used by unit tests to mock the caller function
-	// and not depend on the line numbers in the tests sources.
-	caller func(int) (string, int, string, bool)
+	Event  Event
+	Caller func(int) (string, int, string, bool)
 }
 
-func NewLogger(w io.Writer) *Logger {
-	return NewLoggerWith(LoggerConfig{
-		Output: w,
+type LoggerOutput interface {
+	Send(Event)
+}
+
+type LoggerOutputFunc func(Event)
+
+func (f LoggerOutputFunc) Send(e Event) { f(e) }
+
+func NewLoggerOutput(w io.Writer) LoggerOutput {
+	return LoggerOutputFunc(func(e Event) {
+		w.Write(append(e.Bytes(), '\n'))
 	})
 }
 
+func NewLogger(w io.Writer) *Logger {
+	return NewLoggerWith(LoggerConfig{})
+}
+
 func NewLoggerWith(config LoggerConfig) *Logger {
-	if config.caller == nil {
-		config.caller = caller
+	if config.Level == NONE {
+		config.Level = DEBUG
 	}
+
+	if config.Output == nil {
+		config.Output = NewLoggerOutput(os.Stdout)
+	}
+
+	if config.Caller == nil {
+		config.Caller = defaultCaller
+	}
+
 	return &Logger{
+		level:  config.Level,
 		output: config.Output,
 		depth:  config.Depth,
-		caller: config.caller,
+		caller: config.Caller,
+		event:  config.Event.Copy(),
+	}
+}
+
+func (log *Logger) Level() Level {
+	return log.level
+}
+
+func (log *Logger) With(x interface{}) *Logger {
+	return &Logger{
+		level:  log.level,
+		output: log.output,
+		depth:  log.depth,
+		caller: log.caller,
+		event:  makeEventFrom(x).addEvent(log.event),
 	}
 }
 
@@ -109,31 +147,48 @@ func (log *Logger) Print(level Level, args ...interface{}) {
 	log.print(1, level, args...)
 }
 
-func (log *Logger) Log(event Event) {
-	log.log(1, event)
+func (log *Logger) Log(level Level, event Event) {
+	log.log(1, level, event)
 }
 
 func (log *Logger) printf(depth int, level Level, format string, args ...interface{}) {
-	log.log(depth+1, Eprintf(level, format, args...))
+	if level <= log.level {
+		log.log(depth+1, level, Eprintf(format, args...))
+	}
 }
 
 func (log *Logger) print(depth int, level Level, args ...interface{}) {
-	log.log(depth+1, Eprint(level, args...))
+	if level <= log.level {
+		log.log(depth+1, level, Eprint(args...))
+	}
 }
 
-func (log *Logger) log(depth int, event Event) {
-	if file, line, fn, ok := log.caller(log.depth + depth + 1); ok {
-		event.setSource(MessageSource(file, line, fn))
+func (log *Logger) log(depth int, level Level, event Event) {
+	if level <= log.level {
+		for k, v := range log.event {
+			event[k] = v
+		}
+
+		if file, line, fn, ok := log.caller(log.depth + depth + 1); ok {
+			event.setSource(MessageSource(file, line, fn))
+		}
+
+		event.setLevel(level)
+		log.output.Send(event)
 	}
-	log.output.Write(append(event.Bytes(), '\n'))
 }
 
 var (
 	defaultLogger = NewLoggerWith(LoggerConfig{
-		Output: os.Stdout,
+		Output: NewLoggerOutput(os.Stdout),
 		Depth:  1,
+		Caller: Caller,
 	})
 )
+
+func With(v interface{}) *Logger {
+	return defaultLogger.With(v)
+}
 
 func Debugf(format string, args ...interface{}) {
 	defaultLogger.Debugf(format, args...)
@@ -207,6 +262,10 @@ func Print(level Level, args ...interface{}) {
 	defaultLogger.Print(level, args...)
 }
 
-func Log(event Event) {
-	defaultLogger.Log(event)
+func Log(level Level, event Event) {
+	defaultLogger.Log(level, event)
+}
+
+func defaultCaller(depth int) (file string, line int, fn string, ok bool) {
+	return
 }

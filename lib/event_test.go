@@ -1,6 +1,10 @@
 package ecslogs
 
-import "testing"
+import (
+	"errors"
+	"io"
+	"testing"
+)
 
 type eventTest struct {
 	e Event
@@ -10,12 +14,12 @@ type eventTest struct {
 func TestNewEvent(t *testing.T) {
 	testEvents(t,
 		eventTest{
-			e: NewEvent(DEBUG),
-			s: `{"level":"DEBUG"}`,
+			e: NewEvent(),
+			s: `{}`,
 		},
 		eventTest{
-			e: NewEvent(INFO, Tag{"answer", 42}, Tag{"question", "how are you?"}),
-			s: `{"answer":42,"level":"INFO","question":"how are you?"}`,
+			e: NewEvent(Tag{"answer", 42}, Tag{"question", "how are you?"}),
+			s: `{"answer":42,"question":"how are you?"}`,
 		},
 	)
 }
@@ -23,16 +27,16 @@ func TestNewEvent(t *testing.T) {
 func TestEprintf(t *testing.T) {
 	testEvents(t,
 		eventTest{
-			e: Eprintf(DEBUG, ""),
-			s: `{"level":"DEBUG","message":""}`,
+			e: Eprintf(""),
+			s: `{"message":""}`,
 		},
 		eventTest{
-			e: Eprintf(INFO, "Hello World!"),
-			s: `{"level":"INFO","message":"Hello World!"}`,
+			e: Eprintf("Hello World!"),
+			s: `{"message":"Hello World!"}`,
 		},
 		eventTest{
-			e: Eprintf(NOTICE, "Answer: %d", 42),
-			s: `{"level":"NOTICE","message":"Answer: 42"}`,
+			e: Eprintf("Answer: %d", 42),
+			s: `{"message":"Answer: 42"}`,
 		},
 	)
 }
@@ -40,16 +44,85 @@ func TestEprintf(t *testing.T) {
 func TestEprint(t *testing.T) {
 	testEvents(t,
 		eventTest{
-			e: Eprint(DEBUG),
-			s: `{"level":"DEBUG","message":""}`,
+			e: Eprint(),
+			s: `{"message":""}`,
 		},
 		eventTest{
-			e: Eprint(INFO, "Hello World!"),
-			s: `{"level":"INFO","message":"Hello World!"}`,
+			e: Eprint("Hello World!"),
+			s: `{"message":"Hello World!"}`,
 		},
 		eventTest{
-			e: Eprint(NOTICE, "Answer: ", 42),
-			s: `{"level":"NOTICE","message":"Answer: 42"}`,
+			e: Eprint("Answer: ", 42),
+			s: `{"message":"Answer: 42"}`,
+		},
+	)
+}
+
+func TestEventErrors(t *testing.T) {
+	testEvents(t,
+		eventTest{
+			e: Eprint(io.EOF),
+			s: `{"errors":[{"type":"*errors.errorString","error":"EOF"}],"message":"EOF"}`,
+		},
+		eventTest{
+			e: Eprint(errors.New("A"), errors.New("B")),
+			s: `{"errors":[{"type":"*errors.errorString","error":"A"},{"type":"*errors.errorString","error":"B"}],"message":"A B"}`,
+		},
+	)
+}
+
+func TestEventFromMap(t *testing.T) {
+	testEvents(t,
+		eventTest{
+			e: makeEventFrom(nil),
+			s: `{}`,
+		},
+		eventTest{
+			e: makeEventFrom(map[string]interface{}{}),
+			s: `{}`,
+		},
+		eventTest{
+			e: makeEventFrom(map[string]interface{}{"answer": 42}),
+			s: `{"answer":42}`,
+		},
+		eventTest{
+			e: makeEventFrom(map[int]interface{}{1: "A", 2: "B", 3: "C"}),
+			s: `{"1":"A","2":"B","3":"C"}`,
+		},
+		eventTest{
+			e: makeEventFrom(NewEvent()),
+			s: `{}`,
+		},
+	)
+}
+
+func TestEventFromStruct(t *testing.T) {
+	type A struct{}
+
+	type B struct{ S string }
+
+	type C struct {
+		A int `json:"a"`
+		B int `json:"b,omitempty"`
+		C int `json:"-"`
+	}
+
+	testEvents(t,
+		eventTest{
+			e: makeEventFrom(A{}),
+			s: `{}`,
+		},
+		eventTest{
+			e: makeEventFrom(B{"Hello World!"}),
+			s: `{"S":"Hello World!"}`,
+		},
+		eventTest{
+			e: makeEventFrom(C{
+				A: 42,
+				B: 0,
+				C: -1,
+			}),
+			s: `{"a":42}`,
 		},
 	)
 }
@@ -57,7 +130,7 @@ func TestEprint(t *testing.T) {
 func testEvents(t *testing.T, tests ...eventTest) {
 	for _, test := range tests {
 		if s := test.e.String(); s != test.s {
-			t.Errorf("%s != %s", s, test.s)
+			t.Errorf("\n- expected: %s\n- found:    %s", s, test.s)
 		}
 	}
 }

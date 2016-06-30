@@ -28,8 +28,8 @@ func TestLoggerPrintf(t *testing.T) {
 		b.Reset()
 
 		log := NewLoggerWith(LoggerConfig{
-			Output: b,
-			caller: testCaller,
+			Output: NewLoggerOutput(b),
+			Caller: testCaller,
 		})
 		test.method(log, test.format, test.args...)
 
@@ -59,10 +59,50 @@ func TestLoggerPrint(t *testing.T) {
 		b.Reset()
 
 		log := NewLoggerWith(LoggerConfig{
-			Output: b,
-			caller: testCaller,
+			Output: NewLoggerOutput(b),
+			Caller: testCaller,
 		})
 		test.method(log, test.args...)
+
+		if s := b.String(); s != test.message {
+			t.Errorf("\n- expected: %#v\n- found:    %#v", test.message, s)
+		}
+	}
+}
+
+func TestLoggerWith(t *testing.T) {
+	tests := []struct {
+		event   Event
+		message string
+	}{
+		{
+			event: nil,
+			message: `{"level":"DEBUG","message":"the log message","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+`,
+		},
+		{
+			event: NewEvent(),
+			message: `{"level":"DEBUG","message":"the log message","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+`,
+		},
+		{
+			event: NewEvent(Tag{"hello", "world"}),
+			message: `{"hello":"world","level":"DEBUG","message":"the log message","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+`,
+		},
+	}
+
+	b := &bytes.Buffer{}
+	b.Grow(1024)
+
+	for _, test := range tests {
+		b.Reset()
+
+		log := NewLoggerWith(LoggerConfig{
+			Output: NewLoggerOutput(b),
+			Caller: testCaller,
+		})
+		log.With(test.event).Debug("the log message")
 
 		if s := b.String(); s != test.message {
 			t.Errorf("\n- expected: %#v\n- found:    %#v", test.message, s)

@@ -76,9 +76,15 @@ func (m *Message) ExtractContentMetadata() {
 					delete(c, k)
 				}
 
+			case "time":
+				if time, ok := timeValue(v); ok {
+					m.Time = time
+					delete(c, k)
+				}
+
 			default:
-				// Host, Group, Stream, Content and Time cannot be overwritten
-				// by the fields the content object.
+				// Host, Group, Stream, Content cannot be overwritten by the
+				// fields the content object.
 			}
 		}
 	}

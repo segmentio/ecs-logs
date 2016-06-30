@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func caller(depth int) (file string, line int, function string, ok bool) {
+func Caller(depth int) (file string, line int, function string, ok bool) {
 	var fn *runtime.Func
 	var pc uintptr
 	var pkg string

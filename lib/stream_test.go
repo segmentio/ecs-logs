@@ -42,7 +42,6 @@ func TestSplitMessageListHead(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Logf("testing split of %v at %d", test.list, test.count)
 		head, tail := splitMessageListHead(test.list, test.count)
 
 		if !reflect.DeepEqual(head, test.list[:test.count]) {
