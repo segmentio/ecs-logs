@@ -9,12 +9,12 @@ import (
 type Level int
 
 const (
-	UNKNOWN Level = iota
-	EMERGENCY
+	NONE Level = iota
+	EMERG
 	ALERT
-	CRITICAL
+	CRIT
 	ERROR
-	WARNING
+	WARN
 	NOTICE
 	INFO
 	DEBUG
@@ -30,16 +30,16 @@ func (e ParseLevelError) Error() string {
 
 func ParseLevel(s string) (lvl Level, err error) {
 	switch strings.ToUpper(s) {
-	case "EMERGENCY":
-		lvl = EMERGENCY
+	case "EMERG":
+		lvl = EMERG
 	case "ALERT":
 		lvl = ALERT
-	case "CRITICAL":
-		lvl = CRITICAL
+	case "CRIT":
+		lvl = CRIT
 	case "ERROR":
 		lvl = ERROR
-	case "WARNING":
-		lvl = WARNING
+	case "WARN":
+		lvl = WARN
 	case "NOTICE":
 		lvl = NOTICE
 	case "INFO":
@@ -54,16 +54,16 @@ func ParseLevel(s string) (lvl Level, err error) {
 
 func (lvl Level) String() string {
 	switch lvl {
-	case EMERGENCY:
-		return "EMERGENCY"
+	case EMERG:
+		return "EMERG"
 	case ALERT:
 		return "ALERT"
-	case CRITICAL:
-		return "CRITICAL"
+	case CRIT:
+		return "CRIT"
 	case ERROR:
 		return "ERROR"
-	case WARNING:
-		return "WARNING"
+	case WARN:
+		return "WARN"
 	case NOTICE:
 		return "NOTICE"
 	case INFO:

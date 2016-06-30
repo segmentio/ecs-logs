@@ -1,6 +1,10 @@
 package ecslogs
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+	"strings"
+)
 
 type Message struct {
 	Level   Level       `json:"level,omitempty"`
@@ -8,9 +12,7 @@ type Message struct {
 	UID     int         `json:"uid,omitempty"`
 	GID     int         `json:"gid,omitempty"`
 	Errno   int         `json:"errno,omitempty"`
-	Line    int         `json:"line,omitempty"`
-	Func    string      `json:"func,omitempty"`
-	File    string      `json:"file,omitempty"`
+	Source  string      `json:"source,omitempty"`
 	ID      string      `json:"id,omitempty"`
 	Host    string      `json:"host,omitempty"`
 	Group   string      `json:"group,omitempty"`
@@ -62,21 +64,9 @@ func (m *Message) ExtractContentMetadata() {
 					delete(c, k)
 				}
 
-			case "line":
-				if line, ok := intValue(v); ok {
-					m.Line = line
-					delete(c, k)
-				}
-
-			case "func":
-				if fn, ok := stringValue(v); ok {
-					m.Func = fn
-					delete(c, k)
-				}
-
-			case "file":
-				if file, ok := stringValue(v); ok {
-					m.File = file
+			case "source":
+				if source, ok := stringValue(v); ok {
+					m.Source = source
 					delete(c, k)
 				}
 
@@ -104,4 +94,22 @@ func (m Message) ContentLength() int {
 	// compute the length.
 	b, _ := json.Marshal(m.Content)
 	return len(b)
+}
+
+func MessageSource(file string, line int, function string) string {
+	parts := make([]string, 0, 3)
+
+	if len(file) != 0 {
+		parts = append(parts, file)
+	}
+
+	if line != 0 {
+		parts = append(parts, strconv.Itoa(line))
+	}
+
+	if len(function) != 0 {
+		parts = append(parts, function)
+	}
+
+	return strings.Join(parts, ":")
 }

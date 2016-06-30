@@ -7,24 +7,24 @@ var levelTests = []struct {
 	str string
 }{
 	{
-		lvl: EMERGENCY,
-		str: "EMERGENCY",
+		lvl: EMERG,
+		str: "EMERG",
 	},
 	{
 		lvl: ALERT,
 		str: "ALERT",
 	},
 	{
-		lvl: CRITICAL,
-		str: "CRITICAL",
+		lvl: CRIT,
+		str: "CRIT",
 	},
 	{
 		lvl: ERROR,
 		str: "ERROR",
 	},
 	{
-		lvl: WARNING,
-		str: "WARNING",
+		lvl: WARN,
+		str: "WARN",
 	},
 	{
 		lvl: NOTICE,

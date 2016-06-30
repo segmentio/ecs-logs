@@ -9,6 +9,28 @@ import (
 	"time"
 )
 
+func TestMessageSource(t *testing.T) {
+	tests := []struct {
+		file   string
+		line   int
+		fn     string
+		source string
+	}{
+		{
+			file:   "test.go",
+			line:   42,
+			fn:     "F",
+			source: "test.go:42:F",
+		},
+	}
+
+	for _, test := range tests {
+		if s := MessageSource(test.file, test.line, test.fn); s != test.source {
+			t.Errorf("invalid source: %#v", s)
+		}
+	}
+}
+
 func TestMessageString(t *testing.T) {
 	d := time.Date(2016, 6, 13, 12, 23, 42, 123456000, time.Local)
 	m := Message{
