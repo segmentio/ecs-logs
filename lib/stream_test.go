@@ -57,7 +57,7 @@ func TestSplitMessageListHead(t *testing.T) {
 
 func TestStreamName(t *testing.T) {
 	ts := time.Now()
-	st := NewStream("0123456789", ts)
+	st := NewStream("A", "0123456789", ts)
 
 	if s := st.Name(); s != "0123456789" {
 		t.Error("invalid stream name:", s)
@@ -66,16 +66,16 @@ func TestStreamName(t *testing.T) {
 
 func TestStreamString(t *testing.T) {
 	ts := time.Now()
-	st := NewStream("0123456789", ts)
+	st := NewStream("A", "0123456789", ts)
 
-	if s := st.String(); s != `stream { name = "0123456789" }` {
+	if s := st.String(); s != `stream { group = "A", name = "0123456789" }` {
 		t.Error("invalid stream name:", s)
 	}
 }
 
 func TestStreamExpired(t *testing.T) {
 	ts := time.Now()
-	st := NewStream("0123456789", ts)
+	st := NewStream("A", "0123456789", ts)
 
 	if !st.HasExpired(1*time.Second, ts.Add(2*time.Second)) {
 		t.Error("new stream should be considered expired because it has no messages and wasn't updated recently")
@@ -84,9 +84,9 @@ func TestStreamExpired(t *testing.T) {
 
 func TestStreamNotExpiredDueToMessages(t *testing.T) {
 	ts := time.Now()
-	st := NewStream("0123456789", ts)
+	st := NewStream("A", "0123456789", ts)
 	st.Add(Message{
-		Group:   "abc",
+		Group:   "A",
 		Stream:  "0123456789",
 		Content: "Hello World!",
 		Time:    MakeTimestamp(ts),
@@ -99,7 +99,7 @@ func TestStreamNotExpiredDueToMessages(t *testing.T) {
 
 func TestStreamNotExpiredDueToTimeout(t *testing.T) {
 	ts := time.Now()
-	st := NewStream("0123456789", ts)
+	st := NewStream("A", "0123456789", ts)
 
 	if st.HasExpired(1*time.Second, ts) {
 		t.Error("streams that were updated recently should not be expired")

@@ -2,8 +2,8 @@ package cloudwatchlogs
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -12,6 +12,9 @@ type document struct {
 }
 
 func getAwsRegion() (region string, err error) {
+	var res *http.Response
+	var doc document
+
 	if region = __getAwsRegion(); len(region) != 0 {
 		return
 	}
@@ -23,10 +26,13 @@ func getAwsRegion() (region string, err error) {
 		return
 	}
 
-	fmt.Println("fetching AWS region from EC2 instance metadata...")
+	if region = os.Getenv("AWS_REGION"); len(region) != 0 {
+		goto saveRegion
+	}
 
-	var res *http.Response
-	var doc document
+	if region = os.Getenv("AWS_DEFAULT_REGION"); len(region) != 0 {
+		goto saveRegion
+	}
 
 	if res, err = http.Get("http://169.254.169.254/latest/dynamic/instance-identity/document"); err != nil {
 		return
@@ -38,8 +44,8 @@ func getAwsRegion() (region string, err error) {
 	}
 
 	region = doc.Region
+saveRegion:
 	regvar = region
-	fmt.Println("the AWS region is", region)
 	return
 }
 

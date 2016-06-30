@@ -31,7 +31,7 @@ func (group *Group) Name() string {
 
 func (group *Group) Add(msg Message, now time.Time) (stream *Stream) {
 	if stream = group.streams[msg.Stream]; stream == nil {
-		stream = NewStream(msg.Stream, now)
+		stream = NewStream(group.Name(), msg.Stream, now)
 		group.streams[msg.Stream] = stream
 	}
 
@@ -44,12 +44,14 @@ func (group *Group) HasExpired(timeout time.Duration, now time.Time) bool {
 	return len(group.streams) == 0 && now.Sub(group.updatedOn) >= timeout
 }
 
-func (group *Group) RemoveExpired(timeout time.Duration, now time.Time) {
+func (group *Group) RemoveExpired(timeout time.Duration, now time.Time) (streams []*Stream) {
 	for name, stream := range group.streams {
 		if stream.HasExpired(timeout, now) {
+			streams = append(streams, stream)
 			delete(group.streams, name)
 		}
 	}
+	return
 }
 
 func (group *Group) ForEach(f func(*Stream)) {
