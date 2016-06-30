@@ -71,7 +71,7 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 	file := r.getString("CODE_FILE")
 	fn := r.getString("CODE_FUNC")
 
-	msg.Source = ecslogs.MessageSource(file, fn, line)
+	msg.Source = ecslogs.MessageSource(file, line, fn)
 	msg.Level = r.getPriority()
 	msg.PID = r.getInt("_PID")
 	msg.UID = r.getInt("_UID")
