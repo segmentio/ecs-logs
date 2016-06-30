@@ -204,6 +204,9 @@ func (w *writer) write(msg ecslogs.Message) (err error) {
 	// Set the message properties to their zero-value so they are omitted when
 	// serialized to JSON by the String method.
 	msg.Time = 0
+	msg.PID = 0
+	msg.ID = ""
+	msg.Host = ""
 	msg.Group = ""
 	msg.Stream = ""
 	m.MSG = msg.String()
