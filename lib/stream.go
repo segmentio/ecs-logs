@@ -6,6 +6,7 @@ import (
 )
 
 type Stream struct {
+	group     string
 	name      string
 	bytes     int
 	messages  []Message
@@ -21,8 +22,9 @@ type StreamLimits struct {
 	Force    bool
 }
 
-func NewStream(name string, now time.Time) *Stream {
+func NewStream(group string, name string, now time.Time) *Stream {
 	return &Stream{
+		group:     group,
 		name:      name,
 		messages:  make([]Message, 0, 1000),
 		createdOn: now,
@@ -32,7 +34,11 @@ func NewStream(name string, now time.Time) *Stream {
 }
 
 func (stream *Stream) String() string {
-	return fmt.Sprintf("stream { name = %#v }", stream.Name())
+	return fmt.Sprintf("stream { group = %#v, name = %#v }", stream.Group(), stream.Name())
+}
+
+func (stream *Stream) Group() string {
+	return stream.group
 }
 
 func (stream *Stream) Name() string {

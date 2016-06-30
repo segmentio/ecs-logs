@@ -8,6 +8,8 @@ import (
 
 type Destination interface {
 	Open(group string, stream string) (Writer, error)
+
+	Close(group string, stream string)
 }
 
 type DestinationFunc func(group string, stream string) (Writer, error)
@@ -15,6 +17,8 @@ type DestinationFunc func(group string, stream string) (Writer, error)
 func (f DestinationFunc) Open(group string, stream string) (Writer, error) {
 	return f(group, stream)
 }
+
+func (f DestinationFunc) Close(group string, stream string) {}
 
 func RegisterDestination(name string, destination Destination) {
 	dstmtx.Lock()

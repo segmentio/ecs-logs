@@ -55,6 +55,10 @@ func (c *client) Open(group string, stream string) (w ecslogs.Writer, err error)
 	return
 }
 
+func (c *client) Close(group string, stream string) {
+	c.remove(group, stream)
+}
+
 func (c *client) get(group string, stream string) (w *writer) {
 	key := joinGroupStream(group, stream)
 	c.wmtx.Lock()

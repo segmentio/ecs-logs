@@ -22,12 +22,15 @@ func (store *Store) Add(msg Message, now time.Time) (group *Group, stream *Strea
 	return
 }
 
-func (store *Store) RemoveExpired(timeout time.Duration, now time.Time) {
+func (store *Store) RemoveExpired(timeout time.Duration, now time.Time) (streams []*Stream) {
 	for name, group := range store.groups {
+		streams = append(streams, group.RemoveExpired(timeout, now)...)
+
 		if group.HasExpired(timeout, now) {
 			delete(store.groups, name)
 		}
 	}
+	return
 }
 
 func (store *Store) ForEach(f func(*Group)) {

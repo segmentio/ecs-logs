@@ -101,7 +101,7 @@ func main() {
 			logf("timer pulse, flushing streams that haven't been in a while and clearing expired cache...")
 			now := time.Now()
 			flushAll(dests, store, limits, now, join)
-			store.RemoveExpired(cacheTimeout, now)
+			removeExpired(dests, store, cacheTimeout, now)
 
 		case <-sigchan:
 			logf("got interrupt signal, closing message reader...")
@@ -249,6 +249,15 @@ func flushAll(dests []destination, store *ecslogs.Store, limits ecslogs.StreamLi
 			flush(dests, group, stream, limits, now, join)
 		})
 	})
+}
+
+func removeExpired(dests []destination, store *ecslogs.Store, cacheTimeout time.Duration, now time.Time) {
+	for _, stream := range store.RemoveExpired(cacheTimeout, now) {
+		for _, dest := range dests {
+			logf("removed expired stream %s::%s (%s)", stream.Group(), stream.Name(), dest.name)
+			dest.Close(stream.Group(), stream.Name())
+		}
+	}
 }
 
 func fatalf(format string, args ...interface{}) {
