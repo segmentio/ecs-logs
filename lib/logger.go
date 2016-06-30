@@ -76,88 +76,80 @@ func (log *Logger) With(x interface{}) *Logger {
 }
 
 func (log *Logger) Debugf(format string, args ...interface{}) {
-	log.printf(1, DEBUG, format, args...)
+	log.putf(1, DEBUG, format, args...)
 }
 
 func (log *Logger) Infof(format string, args ...interface{}) {
-	log.printf(1, INFO, format, args...)
+	log.putf(1, INFO, format, args...)
 }
 
 func (log *Logger) Noticef(format string, args ...interface{}) {
-	log.printf(1, NOTICE, format, args...)
+	log.putf(1, NOTICE, format, args...)
 }
 
 func (log *Logger) Warnf(format string, args ...interface{}) {
-	log.printf(1, WARN, format, args...)
+	log.putf(1, WARN, format, args...)
 }
 
 func (log *Logger) Errorf(format string, args ...interface{}) {
-	log.printf(1, ERROR, format, args...)
+	log.putf(1, ERROR, format, args...)
 }
 
 func (log *Logger) Critf(format string, args ...interface{}) {
-	log.printf(1, CRIT, format, args...)
+	log.putf(1, CRIT, format, args...)
 }
 
 func (log *Logger) Alertf(format string, args ...interface{}) {
-	log.printf(1, ALERT, format, args...)
+	log.putf(1, ALERT, format, args...)
 }
 
 func (log *Logger) Emergf(format string, args ...interface{}) {
-	log.printf(1, EMERG, format, args...)
-}
-
-func (log *Logger) Printf(level Level, format string, args ...interface{}) {
-	log.printf(1, level, format, args...)
+	log.putf(1, EMERG, format, args...)
 }
 
 func (log *Logger) Debug(args ...interface{}) {
-	log.print(1, DEBUG, args...)
+	log.put(1, DEBUG, args...)
 }
 
 func (log *Logger) Info(args ...interface{}) {
-	log.print(1, INFO, args...)
+	log.put(1, INFO, args...)
 }
 
 func (log *Logger) Notice(args ...interface{}) {
-	log.print(1, NOTICE, args...)
+	log.put(1, NOTICE, args...)
 }
 
 func (log *Logger) Warn(args ...interface{}) {
-	log.print(1, WARN, args...)
+	log.put(1, WARN, args...)
 }
 
 func (log *Logger) Error(args ...interface{}) {
-	log.print(1, ERROR, args...)
+	log.put(1, ERROR, args...)
 }
 
 func (log *Logger) Crit(args ...interface{}) {
-	log.print(1, CRIT, args...)
+	log.put(1, CRIT, args...)
 }
 
 func (log *Logger) Alert(args ...interface{}) {
-	log.print(1, ALERT, args...)
+	log.put(1, ALERT, args...)
 }
 
 func (log *Logger) Emerg(args ...interface{}) {
-	log.print(1, EMERG, args...)
-}
-
-func (log *Logger) Print(level Level, args ...interface{}) {
-	log.print(1, level, args...)
+	log.put(1, EMERG, args...)
 }
 
 func (log *Logger) Log(level Level, event Event) {
-	log.log(1, level, event)
+	log.put(1, level, event)
 }
 
-func (log *Logger) printf(depth int, level Level, format string, args ...interface{}) {
+func (log *Logger) putf(depth int, level Level, format string, args ...interface{}) {
 	if level <= log.level {
 		log.log(depth+1, level, Eprintf(format, args...))
 	}
 }
 
-func (log *Logger) print(depth int, level Level, args ...interface{}) {
+func (log *Logger) put(depth int, level Level, args ...interface{}) {
 	if level <= log.level {
 		log.log(depth+1, level, Eprint(args...))
 	}
@@ -222,10 +214,6 @@ func Emergf(format string, args ...interface{}) {
 	defaultLogger.Emergf(format, args...)
 }
 
-func Printf(level Level, format string, args ...interface{}) {
-	defaultLogger.Printf(level, format, args...)
-}
-
 func Debug(args ...interface{}) {
 	defaultLogger.Debug(args...)
 }
@@ -256,10 +244,6 @@ func Alert(args ...interface{}) {
 
 func Emerg(args ...interface{}) {
 	defaultLogger.Emerg(args...)
-}
-
-func Print(level Level, args ...interface{}) {
-	defaultLogger.Print(level, args...)
 }
 
 func Log(level Level, event Event) {
