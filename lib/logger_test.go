@@ -72,21 +72,68 @@ func TestLoggerPrint(t *testing.T) {
 
 func TestLoggerWith(t *testing.T) {
 	tests := []struct {
-		data    EventData
+		data    interface{}
 		message string
 	}{
 		{
-			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":"the log message"}}
+			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
 `,
 		},
+
 		{
 			data: EventData{},
-			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":"the log message"}}
+			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
 `,
 		},
+
 		{
 			data: EventData{"hello": "world"},
-			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"hello":"world","message":"the log message"}}
+			message: `{"info":{"level":"DEBUG"},"data":{"hello":"world","message":"the log message"}}
+`,
+		},
+
+		{
+			data: struct{}{},
+			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+`,
+		},
+
+		{
+			data: struct{ Answer int }{42},
+			message: `{"info":{"level":"DEBUG"},"data":{"Answer":42,"message":"the log message"}}
+`,
+		},
+
+		{
+			data: struct {
+				Answer int `json:"answer"`
+			}{42},
+			message: `{"info":{"level":"DEBUG"},"data":{"answer":42,"message":"the log message"}}
+`,
+		},
+
+		{
+			data: struct {
+				Answer int `json:",omitempty"`
+			}{},
+			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+`,
+		},
+
+		{
+			data: struct {
+				Answer int `json:"-"`
+			}{},
+			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+`,
+		},
+
+		{
+			data: struct {
+				Question string
+				Answer   string
+			}{"How are you?", "Well"},
+			message: `{"info":{"level":"DEBUG"},"data":{"Answer":"Well","Question":"How are you?","message":"the log message"}}
 `,
 		},
 	}
@@ -97,10 +144,7 @@ func TestLoggerWith(t *testing.T) {
 	for _, test := range tests {
 		b.Reset()
 
-		log := NewLoggerWith(LoggerConfig{
-			Output: NewLoggerOutput(b),
-			Caller: testCaller,
-		})
+		log := NewLoggerWith(LoggerConfig{Output: NewLoggerOutput(b)})
 		log.With(test.data).Debug("the log message")
 
 		if s := b.String(); s != test.message {
