@@ -15,18 +15,16 @@ type EventError struct {
 }
 
 func MakeEventError(err error) EventError {
-	return EventError{
+	e := EventError{
 		Type:  reflect.TypeOf(err).String(),
 		Error: err.Error(),
 	}
-}
 
-func MakeEventErrno(err syscall.Errno) EventError {
-	return EventError{
-		Type:  reflect.TypeOf(err).String(),
-		Error: err.Error(),
-		Errno: int(err),
+	if errno, ok := err.(syscall.Errno); ok {
+		e.Errno = int(errno)
 	}
+
+	return e
 }
 
 type EventInfo struct {
@@ -79,8 +77,6 @@ func MakeEvent(level Level, message string, values ...interface{}) Event {
 
 	for _, val := range values {
 		switch v := val.(type) {
-		case syscall.Errno:
-			errors = append(errors, MakeEventErrno(v))
 		case error:
 			errors = append(errors, MakeEventError(v))
 		}
