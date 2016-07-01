@@ -90,6 +90,10 @@ func (stream *Stream) flushDueToBytesLimit(maxBytes int, now time.Time) []Messag
 		count += 1
 	}
 
+	if count == 0 {
+		count = 1
+	}
+
 	return stream.flush(count, now)
 }
 
