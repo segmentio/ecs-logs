@@ -10,3 +10,12 @@
 [submodule "vendor/github.com/apex/log"]
 	path = vendor/github.com/apex/log
 	url = https://github.com/apex/log
+[submodule "vendor/github.com/statsd/client-interface"]
+	path = vendor/github.com/statsd/client-interface
+	url = https://github.com/statsd/client-interface
+[submodule "vendor/github.com/statsd/client"]
+	path = vendor/github.com/statsd/client
+	url = https://github.com/statsd/client
+[submodule "vendor/github.com/statsd/datadog"]
+	path = vendor/github.com/statsd/datadog
+	url = https://github.com/statsd/datadog
