@@ -31,8 +31,13 @@ func GuessCaller(skip int, maxDepth int, ignorePackages ...string) (pc uintptr, 
 	}
 
 	frames := make([]uintptr, maxDepth)
+	frames = frames[:runtime.Callers(2, frames)]
+
+	// Search for the first stack frame that is not in one of the packages that
+	// we want to ignore.
+	var i int
 search:
-	for _, pc = range frames[:runtime.Callers(skip+2, frames)] {
+	for i, pc = range frames {
 		var info FuncInfo
 
 		if info, ok = GetFuncInfo(pc); !ok {
@@ -45,6 +50,13 @@ search:
 			}
 		}
 
+		// Now that we got out of the packages that we wanted to ignore we need
+		// to go up a couple more stack frames if the `skip` value is not zero.
+		if skip > (len(frames) - (i + 1)) {
+			break
+		}
+
+		pc = frames[i+skip]
 		ok = true
 		return
 	}
