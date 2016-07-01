@@ -1,22 +1,20 @@
 package ecslogs
 
 import (
+	"encoding"
 	"encoding/json"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
+type jsonLengther interface {
+	jsonLen() int
+}
+
 // jsonLen computes the length of the JSON representation of a value of
-// arbitrary type, it's ~2.5x faster in practice and avoid the extra memory
+// arbitrary type, it's ~2x faster in practice and avoid the extra memory
 // allocations made by the json serializer.
-//
-//	go test -bench . ./lib/
-//	PASS
-//	BenchmarkJsonLen      200000      6905 ns/op
-//	BenchmarkJsonMarshal  100000     18054 ns/op
-//	ok  github.com/segmentio/ecs-logs/lib3.487s
-//
 func jsonLen(v interface{}) (n int) {
 	if v == nil {
 		return jsonLenNull()
@@ -57,6 +55,14 @@ func jsonLen(v interface{}) (n int) {
 		return jsonLenBytes(x)
 	case json.Number:
 		return len(x)
+	case jsonLengther:
+		return x.jsonLen()
+	case json.Marshaler:
+		b, _ := x.MarshalJSON()
+		return len(b)
+	case encoding.TextMarshaler:
+		b, _ := x.MarshalText()
+		return jsonLenString(string(b))
 	}
 
 	return jsonLenV(reflect.ValueOf(v))

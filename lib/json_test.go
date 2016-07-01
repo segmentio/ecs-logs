@@ -67,6 +67,11 @@ var (
 				String: "Hello World!",
 			},
 		},
+
+		Event{
+			Info: EventInfo{Level: DEBUG, Time: Now()},
+			Data: EventData{"message": "Hello World!"},
+		},
 	}
 )
 

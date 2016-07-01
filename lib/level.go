@@ -88,3 +88,7 @@ func (lvl *Level) UnmarshalText(b []byte) (err error) {
 	*lvl, err = ParseLevel(string(b))
 	return
 }
+
+func (lvl Level) jsonLen() int {
+	return jsonLenString(lvl.String())
+}
