@@ -52,11 +52,11 @@ search:
 
 		// Now that we got out of the packages that we wanted to ignore we need
 		// to go up a couple more stack frames if the `skip` value is not zero.
-		if skip > (len(frames) - (i + 1)) {
+		if i += skip; i >= len(frames) {
 			break
 		}
 
-		pc = frames[i+skip]
+		pc = frames[i]
 		ok = true
 		return
 	}
