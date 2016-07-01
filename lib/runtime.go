@@ -17,13 +17,6 @@ func (info FuncInfo) String() string {
 	return info.File + ":" + strconv.Itoa(info.Line) + ":" + info.Func
 }
 
-func Caller(skip int) (info FuncInfo, ok bool) {
-	if pc, _, _, x := runtime.Caller(skip + 1); x {
-		info, ok = GetFuncInfo(pc)
-	}
-	return
-}
-
 func GuessCaller(skip int, maxDepth int, ignorePackages ...string) (pc uintptr, ok bool) {
 	if len(ignorePackages) == 0 {
 		pc, _, _, ok = runtime.Caller(skip + 1)
