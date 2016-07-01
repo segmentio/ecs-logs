@@ -41,11 +41,12 @@ func TestMessageString(t *testing.T) {
 			Time:    d,
 			Message: "Hello World!",
 			Info:    EventInfo{Host: "localhost"},
+			Data:    EventData{},
 		},
 	}
 
 	ref := fmt.Sprintf(
-		`{"group":"abc","stream":"0123456789","event":{"level":"INFO","time":"%s","info":{"host":"localhost"},"message":"Hello World!"}}`,
+		`{"group":"abc","stream":"0123456789","event":{"level":"INFO","time":"%s","info":{"host":"localhost"},"data":{},"message":"Hello World!"}}`,
 		d.Format(time.RFC3339Nano),
 	)
 

@@ -16,7 +16,7 @@ func TestLoggerPrintf(t *testing.T) {
 			method: (*Logger).Debugf,
 			format: "Hello %s!",
 			args:   []interface{}{"World"},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"message":"Hello World!"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{},"message":"Hello World!"}
 `,
 		},
 	}
@@ -47,7 +47,7 @@ func TestLoggerPrint(t *testing.T) {
 	}{
 		{
 			method: (*Logger).Debug,
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{},"message":""}
 `,
 		},
 	}
@@ -76,13 +76,13 @@ func TestLoggerWith(t *testing.T) {
 		message string
 	}{
 		{
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
 `,
 		},
 
 		{
 			data: EventData{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
 `,
 		},
 
@@ -94,7 +94,7 @@ func TestLoggerWith(t *testing.T) {
 
 		{
 			data: struct{}{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
 `,
 		},
 
@@ -116,7 +116,7 @@ func TestLoggerWith(t *testing.T) {
 			data: struct {
 				Answer int `json:",omitempty"`
 			}{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
 `,
 		},
 
@@ -124,7 +124,7 @@ func TestLoggerWith(t *testing.T) {
 			data: struct {
 				Answer int `json:"-"`
 			}{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
 `,
 		},
 

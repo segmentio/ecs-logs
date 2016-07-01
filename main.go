@@ -205,6 +205,10 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 			msg.Event.Time = time.Now()
 		}
 
+		if msg.Event.Data == nil {
+			msg.Event.Data = ecslogs.EventData{}
+		}
+
 		c <- msg
 	}
 }
