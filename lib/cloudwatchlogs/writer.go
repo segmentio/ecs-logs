@@ -38,12 +38,10 @@ func (w *writer) WriteMessageBatch(batch []ecslogs.Message) (err error) {
 	for i, msg := range batch {
 		// Set the message properties to their zero-value so they are omitted when
 		// serialized to JSON by the String method.
-		ts := msg.Time
-		msg.Group = ""
-		msg.Stream = ""
-		msg.Time = 0
+		ts := msg.Event.Info.Time
+		msg.Event.Info.Time = 0
 		events[i] = &cloudwatchlogs.InputLogEvent{
-			Message:   aws.String(msg.String()),
+			Message:   aws.String(msg.Event.String()),
 			Timestamp: aws.Int64(ts.Milliseconds()),
 		}
 	}

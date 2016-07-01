@@ -9,38 +9,68 @@ import (
 	"time"
 )
 
+func TestMessageSource(t *testing.T) {
+	tests := []struct {
+		file   string
+		line   int
+		fn     string
+		source string
+	}{
+		{
+			file:   "test.go",
+			line:   42,
+			fn:     "F",
+			source: "test.go:42:F",
+		},
+	}
+
+	for _, test := range tests {
+		if s := MessageSource(test.file, test.line, test.fn); s != test.source {
+			t.Errorf("invalid source: %#v", s)
+		}
+	}
+}
+
 func TestMessageString(t *testing.T) {
 	d := time.Date(2016, 6, 13, 12, 23, 42, 123456000, time.Local)
 	m := Message{
-		Level:   INFO,
-		Group:   "abc",
-		Stream:  "0123456789",
-		Content: "Hello World!",
-		Time:    MakeTimestamp(d),
+		Group:  "abc",
+		Stream: "0123456789",
+		Event: Event{
+			Info: EventInfo{Level: INFO, Time: MakeTimestamp(d)},
+			Data: EventData{"message": "Hello World!"},
+		},
 	}
 
-	ref := fmt.Sprintf(`{"level":"INFO","group":"abc","stream":"0123456789","content":"Hello World!","time":"%s"}`, d.Format(time.RFC3339Nano))
+	ref := fmt.Sprintf(
+		`{"group":"abc","stream":"0123456789","event":{"info":{"level":"INFO","time":"%s"},"data":{"message":"Hello World!"}}}`,
+		d.Format(time.RFC3339Nano),
+	)
 
 	if s := m.String(); s != ref {
 		t.Errorf("invalid string representation of the message:\n - expected: %s\n - found:    %s", ref, s)
 	}
 }
 
-func TestMessageEncoderDecover(t *testing.T) {
+func TestMessageEncoderDecoder(t *testing.T) {
+	d1 := time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)
+	d2 := time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)
 	batch := []Message{
 		Message{
-			Level:   INFO,
-			Group:   "abc",
-			Stream:  "0123456789",
-			Content: "Hello World!",
-			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)),
+			Group:  "abc",
+			Stream: "0123456789",
+			Event: Event{
+				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d1)},
+				Data: EventData{"message": "Hello World!"},
+			},
 		},
 		Message{
-			Level:   INFO,
-			Group:   "abc",
-			Stream:  "0123456789",
-			Content: "How are you doing?",
-			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)),
+			Group:  "abc",
+			Stream: "0123456789",
+			Event: Event{
+				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d2)},
+				Data: EventData{"message": "How are you doing?"},
+			},
 		},
 	}
 
@@ -51,11 +81,8 @@ func TestMessageEncoderDecover(t *testing.T) {
 	// This goroutine encodes the batch of message using the encoder that
 	// outputs the serialized messages to the write end of the pipe.
 	go func() {
+		defer w.Close()
 		if err := e.WriteMessageBatch(batch); err != nil {
-			t.Error(err)
-		}
-
-		if err := e.Close(); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -86,20 +113,24 @@ func TestMessageEncoderDecover(t *testing.T) {
 }
 
 func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
+	d1 := time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)
+	d2 := time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)
 	batch := []Message{
 		Message{
-			Level:   INFO,
-			Group:   "abc",
-			Stream:  "0123456789",
-			Content: "Hello World!",
-			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)),
+			Group:  "abc",
+			Stream: "0123456789",
+			Event: Event{
+				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d1)},
+				Data: EventData{"message": "Hello World!"},
+			},
 		},
 		Message{
-			Level:   INFO,
-			Group:   "abc",
-			Stream:  "0123456789",
-			Content: "How are you doing?",
-			Time:    MakeTimestamp(time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)),
+			Group:  "abc",
+			Stream: "0123456789",
+			Event: Event{
+				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d2)},
+				Data: EventData{"message": "How are you doing?"},
+			},
 		},
 	}
 

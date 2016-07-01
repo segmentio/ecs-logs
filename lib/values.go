@@ -15,6 +15,19 @@ func levelValue(v interface{}) (lvl Level, ok bool) {
 	return
 }
 
+func timeValue(v interface{}) (t Timestamp, ok bool) {
+	var err error
+
+	if s, x := stringValue(v); !x {
+		return
+	} else if t, err = ParseTimestamp(s); err != nil {
+		return
+	}
+
+	ok = true
+	return
+}
+
 func intValue(v interface{}) (n int, ok bool) {
 	switch x := reflect.ValueOf(v); x.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:

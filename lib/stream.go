@@ -90,6 +90,10 @@ func (stream *Stream) flushDueToBytesLimit(maxBytes int, now time.Time) []Messag
 		count += 1
 	}
 
+	if count == 0 {
+		count = 1
+	}
+
 	return stream.flush(count, now)
 }
 
@@ -107,6 +111,7 @@ func (stream *Stream) flushDueToForcedFlushing(now time.Time) []Message {
 
 func (stream *Stream) flush(count int, now time.Time) (msglist []Message) {
 	msglist, stream.messages = splitMessageListHead(stream.messages, count)
+	stream.bytes -= messageListBytes(msglist)
 	stream.flushedOn = now
 	return
 }
@@ -116,5 +121,12 @@ func splitMessageListHead(list []Message, count int) (head []Message, tail []Mes
 	tail = make([]Message, len(list)-count, cap(list))
 	copy(head, list[:count])
 	copy(tail, list[count:])
+	return
+}
+
+func messageListBytes(list []Message) (bytes int) {
+	for _, msg := range list {
+		bytes += msg.ContentLength()
+	}
 	return
 }

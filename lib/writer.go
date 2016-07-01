@@ -26,9 +26,6 @@ type encoder struct {
 }
 
 func (e encoder) Close() (err error) {
-	if c, ok := e.w.(io.Closer); ok {
-		err = c.Close()
-	}
 	return
 }
 

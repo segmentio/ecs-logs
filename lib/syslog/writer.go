@@ -178,12 +178,12 @@ func (w *writer) WriteMessage(msg ecslogs.Message) (err error) {
 
 func (w *writer) write(msg ecslogs.Message) (err error) {
 	m := message{
-		PRIVAL:    int(msg.Level) + 8, // +8 is for user-level messages facility
-		HOSTNAME:  msg.Host,
-		MSGID:     msg.ID,
+		PRIVAL:    int(msg.Event.Info.Level-1) + 8, // +8 is for user-level messages facility
+		HOSTNAME:  msg.Event.Info.Host,
+		MSGID:     msg.Event.Info.ID,
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
-		TIMESTAMP: msg.Time.Format(w.timeFormat),
+		TIMESTAMP: msg.Event.Info.Time.Format(w.timeFormat),
 		TAG:       w.tag,
 	}
 
@@ -195,18 +195,20 @@ func (w *writer) write(msg ecslogs.Message) (err error) {
 		m.MSGID = "-"
 	}
 
-	if msg.PID == 0 {
+	if msg.Event.Info.PID == 0 {
 		m.PROCID = "-"
 	} else {
-		m.PROCID = strconv.Itoa(msg.PID)
+		m.PROCID = strconv.Itoa(msg.Event.Info.PID)
 	}
 
 	// Set the message properties to their zero-value so they are omitted when
 	// serialized to JSON by the String method.
-	msg.Time = 0
-	msg.Group = ""
-	msg.Stream = ""
-	m.MSG = msg.String()
+	msg.Event.Info.Level = ecslogs.NONE
+	msg.Event.Info.Time = 0
+	msg.Event.Info.PID = 0
+	msg.Event.Info.ID = ""
+	msg.Event.Info.Host = ""
+	m.MSG = msg.Event.String()
 
 	return w.out(w, m)
 }
