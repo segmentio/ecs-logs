@@ -1,4 +1,4 @@
-package ecslogs_logrus
+package logrus_ecslogs
 
 import (
 	"bytes"
