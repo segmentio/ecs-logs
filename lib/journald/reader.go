@@ -73,9 +73,7 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 		d.UseNumber()
 
 		if d.Decode(&msg.Event) != nil {
-			msg.Event = ecslogs.Event{
-				Data: ecslogs.EventData{"message": s},
-			}
+			msg.Event.Message = s
 		}
 	}
 
