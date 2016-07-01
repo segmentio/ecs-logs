@@ -26,6 +26,9 @@ var (
 		[]byte(""),
 		[]byte("Hello World!"),
 
+		json.Number("0"),
+		json.Number("1.2345"),
+
 		[]int{},
 		[]int{1, 2, 3},
 		[]string{"hello", "world"},

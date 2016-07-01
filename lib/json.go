@@ -1,18 +1,77 @@
 package ecslogs
 
 import (
+	"encoding/json"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
 func jsonLen(v interface{}) (n int) {
+	if v == nil {
+		return jsonLenNull()
+	}
+
+	// Fast path for base types, this is has shown to be faster than using
+	// reflection in the benchmarks.
+	switch x := v.(type) {
+	case bool:
+		return jsonLenBool(x)
+	case int:
+		return jsonLenInt(int64(x))
+	case int8:
+		return jsonLenInt(int64(x))
+	case int16:
+		return jsonLenInt(int64(x))
+	case int32:
+		return jsonLenInt(int64(x))
+	case int64:
+		return jsonLenInt(int64(x))
+	case uint:
+		return jsonLenUint(uint64(x))
+	case uint8:
+		return jsonLenUint(uint64(x))
+	case uint16:
+		return jsonLenUint(uint64(x))
+	case uint32:
+		return jsonLenUint(uint64(x))
+	case uint64:
+		return jsonLenUint(uint64(x))
+	case float32:
+		return jsonLenFloat(float64(x))
+	case float64:
+		return jsonLenFloat(float64(x))
+	case string:
+		return jsonLenString(x)
+	case []byte:
+		return jsonLenBytes(x)
+	case json.Number:
+		return len(x)
+	}
+
 	return jsonLenV(reflect.ValueOf(v))
 }
 
 func jsonLenV(v reflect.Value) (n int) {
 	if v.IsValid() {
 		switch t := v.Type(); t.Kind() {
+		case reflect.Struct:
+			return jsonLenStruct(t, v)
+
+		case reflect.Map:
+			return jsonLenMap(v)
+
+		case reflect.Slice:
+			if t.Elem().Kind() == reflect.Uint8 {
+				return jsonLenBytes(v.Bytes())
+			}
+			return jsonLenArray(v)
+
+		case reflect.Ptr, reflect.Interface:
+			if !v.IsNil() {
+				return jsonLen(v.Elem().Interface())
+			}
+
 		case reflect.Bool:
 			return jsonLenBool(v.Bool())
 
@@ -28,25 +87,8 @@ func jsonLenV(v reflect.Value) (n int) {
 		case reflect.String:
 			return jsonLenString(v.String())
 
-		case reflect.Slice:
-			if t.Elem().Kind() == reflect.Uint8 {
-				return jsonLenBytes(v.Bytes())
-			}
-			return jsonLenArray(v)
-
 		case reflect.Array:
 			return jsonLenArray(v)
-
-		case reflect.Map:
-			return jsonLenMap(v)
-
-		case reflect.Struct:
-			return jsonLenStruct(t, v)
-
-		case reflect.Ptr, reflect.Interface:
-			if !v.IsNil() {
-				return jsonLenV(v.Elem())
-			}
 		}
 	}
 
@@ -115,7 +157,7 @@ func jsonLenArray(v reflect.Value) (n int) {
 		if i != 0 {
 			n++
 		}
-		n += jsonLenV(v.Index(i))
+		n += jsonLen(v.Index(i).Interface())
 	}
 	return n + 2
 }
@@ -125,7 +167,7 @@ func jsonLenMap(v reflect.Value) (n int) {
 		if i != 0 {
 			n++
 		}
-		n += jsonLenV(k) + jsonLenV(v.MapIndex(k)) + 1
+		n += jsonLen(k.Interface()) + jsonLen(v.MapIndex(k).Interface()) + 1
 	}
 	return n + 2
 }
@@ -140,7 +182,7 @@ func jsonLenStruct(t reflect.Type, v reflect.Value) (n int) {
 			if n != 0 {
 				n++
 			}
-			n += jsonLenString(name) + jsonLenV(f) + 1
+			n += jsonLenString(name) + jsonLen(f.Interface()) + 1
 		}
 	}
 	return n + 2
