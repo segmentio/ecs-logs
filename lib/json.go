@@ -53,10 +53,10 @@ func jsonLen(v interface{}) (n int) {
 		return jsonLenString(x)
 	case []byte:
 		return jsonLenBytes(x)
-	case json.Number:
-		return len(x)
 	case jsonLengther:
 		return x.jsonLen()
+	case json.Number:
+		return len(x)
 	case json.Marshaler:
 		b, _ := x.MarshalJSON()
 		return len(b)
