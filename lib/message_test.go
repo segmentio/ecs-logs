@@ -37,13 +37,16 @@ func TestMessageString(t *testing.T) {
 		Group:  "abc",
 		Stream: "0123456789",
 		Event: Event{
-			Info: EventInfo{Level: INFO, Time: MakeTimestamp(d)},
-			Data: EventData{"message": "Hello World!"},
+			Level:   INFO,
+			Time:    d,
+			Message: "Hello World!",
+			Info:    EventInfo{Host: "localhost"},
+			Data:    EventData{},
 		},
 	}
 
 	ref := fmt.Sprintf(
-		`{"group":"abc","stream":"0123456789","event":{"info":{"level":"INFO","time":"%s"},"data":{"message":"Hello World!"}}}`,
+		`{"group":"abc","stream":"0123456789","event":{"level":"INFO","time":"%s","info":{"host":"localhost"},"data":{},"message":"Hello World!"}}`,
 		d.Format(time.RFC3339Nano),
 	)
 
@@ -53,23 +56,23 @@ func TestMessageString(t *testing.T) {
 }
 
 func TestMessageEncoderDecoder(t *testing.T) {
-	d1 := time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)
-	d2 := time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)
 	batch := []Message{
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
 			Event: Event{
-				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d1)},
-				Data: EventData{"message": "Hello World!"},
+				Level:   INFO,
+				Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
+				Message: "Hello World!",
 			},
 		},
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
 			Event: Event{
-				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d2)},
-				Data: EventData{"message": "How are you doing?"},
+				Level:   INFO,
+				Time:    time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC),
+				Message: "How are you doing?",
 			},
 		},
 	}
@@ -113,23 +116,23 @@ func TestMessageEncoderDecoder(t *testing.T) {
 }
 
 func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
-	d1 := time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC)
-	d2 := time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC)
 	batch := []Message{
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
 			Event: Event{
-				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d1)},
-				Data: EventData{"message": "Hello World!"},
+				Level:   INFO,
+				Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
+				Message: "Hello World!",
 			},
 		},
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
 			Event: Event{
-				Info: EventInfo{Level: INFO, Time: MakeTimestamp(d2)},
-				Data: EventData{"message": "How are you doing?"},
+				Level:   INFO,
+				Time:    time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC),
+				Message: "How are you doing?",
 			},
 		},
 	}

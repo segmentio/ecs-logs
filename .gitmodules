@@ -4,3 +4,6 @@
 [submodule "vendor/github.com/coreos/go-systemd"]
 	path = vendor/github.com/coreos/go-systemd
 	url = https://github.com/coreos/go-systemd
+[submodule "vendor/github.com/Sirupsen/logrus"]
+	path = vendor/github.com/Sirupsen/logrus
+	url = https://github.com/Sirupsen/logrus

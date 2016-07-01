@@ -37,16 +37,17 @@ func (f *formatter) Format(entry *logrus.Entry) (b []byte, err error) {
 
 func makeEvent(entry *logrus.Entry) ecslogs.Event {
 	return ecslogs.Event{
-		Info: makeEventInfo(entry),
-		Data: makeEventData(entry),
+		Level:   makeLevel(entry.Level),
+		Info:    makeEventInfo(entry),
+		Data:    makeEventData(entry),
+		Time:    entry.Time,
+		Message: entry.Message,
 	}
 }
 
 func makeEventInfo(entry *logrus.Entry) ecslogs.EventInfo {
 	return ecslogs.EventInfo{
-		Level:  makeLevel(entry.Level),
 		Errors: makeErrors(entry.Data),
-		Time:   ecslogs.MakeTimestamp(entry.Time),
 	}
 }
 
@@ -61,7 +62,6 @@ func makeEventData(entry *logrus.Entry) ecslogs.EventData {
 		}
 	}
 
-	data["message"] = entry.Message
 	return data
 }
 

@@ -1,6 +1,9 @@
 package ecslogs
 
-import "reflect"
+import (
+	"reflect"
+	"time"
+)
 
 func levelValue(v interface{}) (lvl Level, ok bool) {
 	var err error
@@ -15,12 +18,12 @@ func levelValue(v interface{}) (lvl Level, ok bool) {
 	return
 }
 
-func timeValue(v interface{}) (t Timestamp, ok bool) {
+func timeValue(v interface{}) (t time.Time, ok bool) {
 	var err error
 
 	if s, x := stringValue(v); !x {
 		return
-	} else if t, err = ParseTimestamp(s); err != nil {
+	} else if t, err = time.Parse(time.RFC3339Nano, s); err != nil {
 		return
 	}
 
