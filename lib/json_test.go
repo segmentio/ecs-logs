@@ -2,6 +2,7 @@ package ecslogs
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"testing"
 )
 
@@ -98,6 +99,15 @@ func BenchmarkJsonMarshal(b *testing.B) {
 	for i := 0; i != b.N; i++ {
 		for _, test := range jsonLenTests {
 			json.Marshal(test)
+		}
+	}
+}
+
+func BenchmarkJsonMarshalDevNull(b *testing.B) {
+	for i := 0; i != b.N; i++ {
+		for _, test := range jsonLenTests {
+			e := json.NewEncoder(ioutil.Discard)
+			e.Encode(test)
 		}
 	}
 }
