@@ -30,7 +30,7 @@ func GuessCaller(skip int, maxDepth int, ignorePackages ...string) (pc uintptr, 
 		return
 	}
 
-	frames := make([]uintptr, maxDepth)
+	frames := make([]uintptr, skip+maxDepth)
 	frames = frames[:runtime.Callers(2, frames)]
 
 	// Search for the first stack frame that is not in one of the packages that

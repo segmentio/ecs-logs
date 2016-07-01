@@ -32,7 +32,7 @@ func (f *formatter) Format(entry *logrus.Entry) (b []byte, err error) {
 	cfg.FuncInfo = nil
 
 	if f.config.FuncInfo != nil {
-		if pc, ok := ecslogs.GuessCaller(f.config.Depth, f.config.Depth+10, "github.com/segmentio/ecs-logs"); ok {
+		if pc, ok := ecslogs.GuessCaller(f.config.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
 			if info, ok := f.config.FuncInfo(pc); ok {
 				source = info.String()
 			}

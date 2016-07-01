@@ -31,7 +31,7 @@ func NewHandlerWith(config ecslogs.LoggerConfig) apex.Handler {
 	return apex.HandlerFunc(func(entry *apex.Entry) error {
 		var source string
 
-		if pc, ok := ecslogs.GuessCaller(config.Depth, config.Depth+10, "github.com/segmentio/ecs-logs"); ok {
+		if pc, ok := ecslogs.GuessCaller(config.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
 			if info, ok := funcInfo(pc); ok {
 				source = info.String()
 			}
