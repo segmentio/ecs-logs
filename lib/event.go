@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 	"syscall"
 )
 
@@ -146,7 +145,7 @@ func makeEventDataFromStruct(t reflect.Type, v reflect.Value) EventData {
 	for i, n := 0, t.NumField(); i != n; i++ {
 		if ft, fv := t.Field(i), v.Field(i); ft.Anonymous {
 			continue
-		} else if name, omitempty, skip := parseStructField(ft); skip {
+		} else if name, omitempty, skip := parseJsonStructField(ft); skip {
 			continue
 		} else if omitempty && isEmptyValue(fv) {
 			continue
@@ -172,49 +171,6 @@ func makeEventDataFromMap(t reflect.Type, v reflect.Value) EventData {
 	}
 
 	return e
-}
-
-func parseStructField(field reflect.StructField) (name string, omitempty bool, skip bool) {
-	if name, omitempty, skip = parseStructTag(field.Tag.Get("json")); len(name) == 0 {
-		name = field.Name
-	}
-	return
-}
-
-func parseStructTag(tag string) (name string, omitempty bool, skip bool) {
-	name, tag = parseNextTagToken(tag)
-	token, _ := parseNextTagToken(tag)
-	skip = name == "-"
-	omitempty = token == "omitempty"
-	return
-}
-
-func parseNextTagToken(tag string) (token string, next string) {
-	if split := strings.IndexByte(tag, ','); split < 0 {
-		token = tag
-	} else {
-		token, next = tag[:split], tag[split+1:]
-	}
-	return
-}
-
-// Copied from https://golang.org/src/encoding/json/encode.go?h=isEmpty#L282
-func isEmptyValue(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return v.Len() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Ptr:
-		return v.IsNil()
-	}
-	return false
 }
 
 func sprintf(format string, args ...interface{}) string {

@@ -22,9 +22,7 @@ func (m Message) String() string {
 }
 
 func (m Message) ContentLength() int {
-	// TOOD: optimize this so we don't actually serialize the content and just
-	// compute the length.
-	return len(m.Event.Bytes())
+	return jsonLen(m.Event)
 }
 
 func MessageSource(file string, line int, function string) string {
