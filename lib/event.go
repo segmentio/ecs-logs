@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"syscall"
+	"time"
 )
 
 type EventError struct {
@@ -28,14 +29,12 @@ func MakeEventError(err error) EventError {
 }
 
 type EventInfo struct {
-	Level  Level        `json:"level,omitempty"`
 	Host   string       `json:"host,omitempty"`
 	Source string       `json:"source,omitempty"`
 	ID     string       `json:"id,omitempty"`
 	PID    int          `json:"pid,omitempty"`
 	UID    int          `json:"uid,omitempty"`
 	GID    int          `json:"gid,omitempty"`
-	Time   Timestamp    `json:"time,omitempty"`
 	Errors []EventError `json:"errors,omitempty"`
 }
 
@@ -60,8 +59,11 @@ func (c EventData) String() string {
 }
 
 type Event struct {
-	Info EventInfo `json:"info"`
-	Data EventData `json:"data"`
+	Level   Level     `json:"level"`
+	Time    time.Time `json:"time"`
+	Info    EventInfo `json:"info"`
+	Data    EventData `json:"data,omitempty"`
+	Message string    `json:"message,omitempty"`
 }
 
 func Eprintf(level Level, format string, args ...interface{}) Event {
@@ -83,8 +85,9 @@ func MakeEvent(level Level, message string, values ...interface{}) Event {
 	}
 
 	return Event{
-		Info: EventInfo{Level: level, Errors: errors},
-		Data: EventData{"message": message},
+		Info:    EventInfo{Errors: errors},
+		Level:   level,
+		Message: message,
 	}
 }
 

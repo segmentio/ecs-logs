@@ -79,8 +79,8 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 		}
 	}
 
-	if msg.Event.Info.Level == ecslogs.NONE {
-		msg.Event.Info.Level = r.getPriority()
+	if msg.Event.Level == ecslogs.NONE {
+		msg.Event.Level = r.getPriority()
 	}
 
 	if len(msg.Event.Info.Host) == 0 {
@@ -111,8 +111,8 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 		msg.Event.Info.UID = r.getInt("_UID")
 	}
 
-	if msg.Event.Info.Time == 0 {
-		msg.Event.Info.Time = r.getTime()
+	if msg.Event.Time == (time.Time{}) {
+		msg.Event.Time = r.getTime()
 	}
 
 	ok = true
@@ -124,9 +124,9 @@ func (r reader) getInt(k string) (v int) {
 	return
 }
 
-func (r reader) getTime() (t ecslogs.Timestamp) {
+func (r reader) getTime() (t time.Time) {
 	if u, e := r.GetRealtimeUsec(); e == nil {
-		t = ecslogs.MakeTimestamp(time.Unix(int64(u/1000000), int64((u%1000000)*1000)))
+		t = time.Unix(int64(u/1000000), int64((u%1000000)*1000))
 	}
 	return
 }

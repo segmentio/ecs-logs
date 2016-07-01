@@ -16,7 +16,7 @@ func TestLoggerPrintf(t *testing.T) {
 			method: (*Logger).Debugf,
 			format: "Hello %s!",
 			args:   []interface{}{"World"},
-			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":"Hello World!"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"message":"Hello World!"}
 `,
 		},
 	}
@@ -47,7 +47,7 @@ func TestLoggerPrint(t *testing.T) {
 	}{
 		{
 			method: (*Logger).Debug,
-			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":""}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}}
 `,
 		},
 	}
@@ -76,31 +76,31 @@ func TestLoggerWith(t *testing.T) {
 		message string
 	}{
 		{
-			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
 `,
 		},
 
 		{
 			data: EventData{},
-			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
 `,
 		},
 
 		{
 			data: EventData{"hello": "world"},
-			message: `{"info":{"level":"DEBUG"},"data":{"hello":"world","message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"hello":"world"},"message":"the log message"}
 `,
 		},
 
 		{
 			data: struct{}{},
-			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
 `,
 		},
 
 		{
 			data: struct{ Answer int }{42},
-			message: `{"info":{"level":"DEBUG"},"data":{"Answer":42,"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"Answer":42},"message":"the log message"}
 `,
 		},
 
@@ -108,7 +108,7 @@ func TestLoggerWith(t *testing.T) {
 			data: struct {
 				Answer int `json:"answer"`
 			}{42},
-			message: `{"info":{"level":"DEBUG"},"data":{"answer":42,"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"answer":42},"message":"the log message"}
 `,
 		},
 
@@ -116,7 +116,7 @@ func TestLoggerWith(t *testing.T) {
 			data: struct {
 				Answer int `json:",omitempty"`
 			}{},
-			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
 `,
 		},
 
@@ -124,7 +124,7 @@ func TestLoggerWith(t *testing.T) {
 			data: struct {
 				Answer int `json:"-"`
 			}{},
-			message: `{"info":{"level":"DEBUG"},"data":{"message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"message":"the log message"}
 `,
 		},
 
@@ -133,7 +133,7 @@ func TestLoggerWith(t *testing.T) {
 				Question string
 				Answer   string
 			}{"How are you?", "Well"},
-			message: `{"info":{"level":"DEBUG"},"data":{"Answer":"Well","Question":"How are you?","message":"the log message"}}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"Answer":"Well","Question":"How are you?"},"message":"the log message"}
 `,
 		},
 	}

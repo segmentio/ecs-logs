@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"testing"
+	"time"
 )
 
 var (
@@ -70,8 +71,11 @@ var (
 		},
 
 		Event{
-			Info: EventInfo{Level: DEBUG, Time: Now()},
-			Data: EventData{"message": "Hello World!"},
+			Level:   DEBUG,
+			Time:    time.Now(),
+			Info:    EventInfo{Host: "localhost"},
+			Data:    EventData{"hello": "world"},
+			Message: "Hello World!",
 		},
 	}
 )

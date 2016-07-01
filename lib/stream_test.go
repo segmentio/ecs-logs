@@ -88,8 +88,8 @@ func TestStreamNotExpiredDueToMessages(t *testing.T) {
 		Group:  "A",
 		Stream: "0123456789",
 		Event: Event{
-			Info: EventInfo{Time: MakeTimestamp(ts)},
-			Data: EventData{"message": "Hello World!"},
+			Time:    ts,
+			Message: "Hello World!",
 		},
 	}, ts)
 
@@ -114,24 +114,24 @@ func TestStreamBytes(t *testing.T) {
 		Group:  "A",
 		Stream: "0123456789",
 		Event: Event{
-			Info: EventInfo{Time: MakeTimestamp(ts)},
-			Data: EventData{"message": "Hello World!"},
+			Time:    ts,
+			Message: "Hello World!",
 		},
 	}
 	m2 := Message{
 		Group:  "A",
 		Stream: "0123456789",
 		Event: Event{
-			Info: EventInfo{Time: MakeTimestamp(ts)},
-			Data: EventData{"message": "How are you?"},
+			Time:    ts,
+			Message: "How are you?",
 		},
 	}
 	m3 := Message{
 		Group:  "A",
 		Stream: "0123456789",
 		Event: Event{
-			Info: EventInfo{Time: MakeTimestamp(ts)},
-			Data: EventData{"message": "Well"},
+			Time:    ts,
+			Message: "Well",
 		},
 	}
 

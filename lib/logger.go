@@ -156,7 +156,7 @@ func (log *Logger) put(depth int, level Level, args ...interface{}) {
 }
 
 func (log *Logger) log(depth int, event Event) {
-	if event.Info.Level <= log.level {
+	if event.Level <= log.level {
 		if len(log.data) != 0 {
 			if event.Data == nil {
 				event.Data = EventData{}

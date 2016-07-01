@@ -3,6 +3,7 @@ package ecslogs_logrus
 import (
 	"bytes"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/Sirupsen/logrus"
@@ -21,12 +22,13 @@ func TestFormatter(t *testing.T) {
 		WithField("hello", "world").
 		Errorf("an error was raised (%s)", io.EOF)
 
-	if s := buf.String(); len(s) == 0 {
-		t.Error("logrus formatter failed: empty buffer")
-	} else {
-		// I wish we could make better testing here but the logrus
-		// API doesn't let us mock the timestamp so we can't really
-		// predict what "time" is gonna be.
-		t.Log(s)
+	s := buf.String()
+
+	// I wish we could make better testing here but the logrus
+	// API doesn't let us mock the timestamp so we can't really
+	// predict what "time" is gonna be.
+	if !strings.HasPrefix(s, `{"level":"ERROR","time":"`) || !strings.HasSuffix(s, `","info":{"errors":[{"type":"*errors.errorString","error":"EOF"}]},"data":{"hello":"world"},"message":"an error was raised (EOF)"}
+`) {
+		t.Error("logrus formatter failed:", s)
 	}
 }
