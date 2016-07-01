@@ -187,11 +187,13 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 
 		if len(msg.Group) == 0 {
 			errorf("dropping %s message because the group property wasn't set", r.name)
+			errorf("- %s", msg.Event)
 			continue
 		}
 
 		if len(msg.Stream) == 0 {
-			errorf("dropping %s message because the stream property wasn't set", r.name)
+			errorf("dropping %s message because the stream property wasn't set (%s)", r.name, msg.Group)
+			errorf("- %s", msg.Event)
 			continue
 		}
 
@@ -214,13 +216,13 @@ func write(dest destination, group string, stream string, batch []ecslogs.Messag
 	var err error
 
 	if writer, err = dest.Open(group, stream); err != nil {
-		errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest.name, err)
+		errorBatch(dest.name, group, stream, err, batch)
 		return
 	}
 	defer writer.Close()
 
 	if err = writer.WriteMessageBatch(batch); err != nil {
-		errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest.name, err)
+		errorBatch(dest.name, group, stream, err, batch)
 		return
 	}
 }
@@ -270,4 +272,11 @@ func errorf(format string, args ...interface{}) {
 
 func logf(format string, args ...interface{}) {
 	fmt.Printf(format+"\n", args...)
+}
+
+func errorBatch(dest string, group string, stream string, err error, batch []ecslogs.Message) {
+	errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest, err)
+	for _, msg := range batch {
+		errorf("- %s", msg.Event)
+	}
 }
