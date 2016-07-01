@@ -81,11 +81,8 @@ func TestMessageEncoderDecoder(t *testing.T) {
 	// This goroutine encodes the batch of message using the encoder that
 	// outputs the serialized messages to the write end of the pipe.
 	go func() {
+		defer w.Close()
 		if err := e.WriteMessageBatch(batch); err != nil {
-			t.Error(err)
-		}
-
-		if err := e.Close(); err != nil {
 			t.Error(err)
 		}
 	}()
