@@ -22,31 +22,45 @@ type formatter struct {
 }
 
 func (f *formatter) Format(entry *logrus.Entry) (b []byte, err error) {
+	var source string
+
 	buf := &bytes.Buffer{}
 	buf.Grow(1024)
 
 	cfg := f.config
 	cfg.Output = ecslogs.NewLoggerOutput(buf)
+	cfg.FuncInfo = nil
+
+	if f.config.FuncInfo != nil {
+		if pc, ok := ecslogs.GuessCaller(f.config.Depth+1, 10, "github.com/segmentio/ecs-logs"); ok {
+			if info, ok := f.config.FuncInfo(pc); ok {
+				source = info.String()
+			}
+		}
+	}
 
 	log := ecslogs.NewLoggerWith(cfg)
-	log.Log(makeEvent(entry))
 
-	b = buf.Bytes()
+	if err = log.Log(makeEvent(entry, source)); err == nil {
+		b = buf.Bytes()
+	}
+
 	return
 }
 
-func makeEvent(entry *logrus.Entry) ecslogs.Event {
+func makeEvent(entry *logrus.Entry, source string) ecslogs.Event {
 	return ecslogs.Event{
 		Level:   makeLevel(entry.Level),
-		Info:    makeEventInfo(entry),
+		Info:    makeEventInfo(entry, source),
 		Data:    makeEventData(entry),
 		Time:    entry.Time,
 		Message: entry.Message,
 	}
 }
 
-func makeEventInfo(entry *logrus.Entry) ecslogs.EventInfo {
+func makeEventInfo(entry *logrus.Entry, source string) ecslogs.EventInfo {
 	return ecslogs.EventInfo{
+		Source: source,
 		Errors: makeErrors(entry.Data),
 	}
 }
