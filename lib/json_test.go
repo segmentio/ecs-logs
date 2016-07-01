@@ -21,6 +21,7 @@ var (
 
 		"",
 		"Hello World!",
+		"Hello\nWorld!",
 
 		[]byte(""),
 		[]byte("Hello World!"),

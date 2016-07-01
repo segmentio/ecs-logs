@@ -95,7 +95,13 @@ func jsonLenFloat(v float64) (n int) {
 }
 
 func jsonLenString(s string) (n int) {
-	return 2 + len(s)
+	for _, c := range s {
+		switch c {
+		case '\n', '\t', '\r', '\v', '\b', '\f', '\\', '/', '"':
+			n++
+		}
+	}
+	return n + 2 + len(s)
 }
 
 func jsonLenBytes(b []byte) (n int) {
