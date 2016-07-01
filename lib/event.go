@@ -9,9 +9,10 @@ import (
 )
 
 type EventError struct {
-	Type  string `json:"type,omitempty"`
-	Error string `json:"error,omitempty"`
-	Errno int    `json:"errno,omitempty"`
+	Type  string      `json:"type,omitempty"`
+	Error string      `json:"error,omitempty"`
+	Errno int         `json:"errno,omitempty"`
+	Stack interface{} `json:"stack,omitempty"`
 }
 
 func MakeEventError(err error) EventError {
