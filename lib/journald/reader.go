@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-systemd/sdjournal"
@@ -68,7 +69,10 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 	}
 
 	if s := r.getString("MESSAGE"); len(s) != 0 {
-		if json.Unmarshal([]byte(s), &msg.Event) != nil {
+		d := json.NewDecoder(strings.NewReader(s))
+		d.UseNumber()
+
+		if d.Decode(&msg.Event) != nil {
 			msg.Event = ecslogs.Event{
 				Data: ecslogs.EventData{"message": s},
 			}
