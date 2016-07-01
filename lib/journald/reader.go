@@ -86,11 +86,11 @@ func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
 	}
 
 	if len(msg.Event.Info.Source) == 0 {
-		msg.Event.Info.Source = ecslogs.MessageSource(
-			r.getString("CODE_FILE"),
-			r.getInt("CODE_LINE"),
-			r.getString("CODE_FUNC"),
-		)
+		msg.Event.Info.Source = (ecslogs.FuncInfo{
+			File: r.getString("CODE_FILE"),
+			Func: r.getString("CODE_FUNC"),
+			Line: r.getInt("CODE_LINE"),
+		}).String()
 	}
 
 	if len(msg.Event.Info.ID) == 0 {
