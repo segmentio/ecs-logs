@@ -8,169 +8,139 @@ import (
 	"syscall"
 )
 
-type Event map[string]interface{}
-
-type Tag struct {
-	Name  string
-	Value interface{}
+type EventError struct {
+	Type  string `json:"type,omitempty"`
+	Error string `json:"error,omitempty"`
+	Errno int    `json:"errno,omitempty"`
 }
 
-const (
-	eventLevelKey   = "level"
-	eventSourceKey  = "source"
-	eventMessageKey = "message"
-	eventErrorsKey  = "errors"
-	eventErrnoKey   = "errno"
-)
-
-func NewEvent(tags ...Tag) Event {
-	return make(Event, len(tags)).setTags(tags...)
-}
-
-func Eprintf(format string, args ...interface{}) Event {
-	return NewEvent().Printf(format, args...)
-}
-
-func Eprint(args ...interface{}) Event {
-	return NewEvent().Print(args...)
-}
-
-func (e Event) String() string {
-	return string(e.Bytes())
-}
-
-func (e Event) Bytes() []byte {
-	b, _ := json.Marshal(e)
-	return b
-}
-
-func (e Event) Printf(format string, args ...interface{}) Event {
-	e.setValues(args...)
-	return e.setMessage(fmt.Sprintf(format, args...))
-}
-
-func (e Event) Print(args ...interface{}) Event {
-	e.setValues(args...)
-	return e.setMessage(fmt.Sprint(args...))
-}
-
-func (e Event) Tag(name string, value interface{}) Event {
-	e[name] = value
-	return e
-}
-
-func (e Event) Level() Level {
-	switch v := e[eventLevelKey].(type) {
-	case Level:
-		return v
-	}
-	return NONE
-}
-
-func (e Event) Copy() Event {
-	return make(Event, len(e)).addEvent(e)
-}
-
-func (e Event) setLevel(level Level) Event {
-	e[eventLevelKey] = level
-	return e
-}
-
-func (e Event) setSource(source string) Event {
-	e[eventSourceKey] = source
-	return e
-}
-
-func (e Event) setMessage(msg string) Event {
-	e[eventMessageKey] = msg
-	return e
-}
-
-func (e Event) setTags(tags ...Tag) Event {
-	for _, t := range tags {
-		e.Tag(t.Name, t.Value)
-	}
-	return e
-}
-
-func (e Event) setValues(args ...interface{}) Event {
-	for _, a := range args {
-		e.setValue(a)
-	}
-	return e
-}
-
-func (e Event) setValue(arg interface{}) Event {
-	switch v := arg.(type) {
-	case syscall.Errno:
-		return e.addError(v).addErrno(v)
-	case error:
-		return e.addError(v)
-	}
-	return e
-}
-
-func (e Event) addEvent(c Event) Event {
-	for k, v := range c {
-		e[k] = v
-	}
-	return e
-}
-
-func (e Event) addError(err error) Event {
-	if errors := e[eventErrorsKey]; errors == nil {
-		e[eventErrorsKey] = []eventError{makeEventError(err)}
-	} else {
-		e[eventErrorsKey] = append(errors.([]eventError), makeEventError(err))
-	}
-	return e
-}
-
-func (e Event) addErrno(errno syscall.Errno) Event {
-	e[eventErrnoKey] = int(errno)
-	return e
-}
-
-type eventError struct {
-	Type  string `json:"type"`
-	Error string `json:"error"`
-}
-
-func makeEventError(err error) eventError {
-	return eventError{
+func MakeEventError(err error) EventError {
+	return EventError{
 		Type:  reflect.TypeOf(err).String(),
 		Error: err.Error(),
 	}
 }
 
-func makeEventFrom(x interface{}) Event {
+func MakeEventErrno(err syscall.Errno) EventError {
+	return EventError{
+		Type:  reflect.TypeOf(err).String(),
+		Error: err.Error(),
+		Errno: int(err),
+	}
+}
+
+type EventInfo struct {
+	Level  Level        `json:"level,omitempty"`
+	Host   string       `json:"host,omitempty"`
+	Source string       `json:"source,omitempty"`
+	ID     string       `json:"id,omitempty"`
+	PID    int          `json:"pid,omitempty"`
+	UID    int          `json:"uid,omitempty"`
+	GID    int          `json:"gid,omitempty"`
+	Time   Timestamp    `json:"time,omitempty"`
+	Errors []EventError `json:"errors,omitempty"`
+}
+
+func (c EventInfo) Bytes() []byte {
+	b, _ := json.Marshal(c)
+	return b
+}
+
+func (c EventInfo) String() string {
+	return string(c.Bytes())
+}
+
+type EventData map[string]interface{}
+
+func (c EventData) Bytes() []byte {
+	b, _ := json.Marshal(c)
+	return b
+}
+
+func (c EventData) String() string {
+	return string(c.Bytes())
+}
+
+type Event struct {
+	Info EventInfo `json:"info"`
+	Data EventData `json:"data"`
+}
+
+func Eprintf(level Level, format string, args ...interface{}) Event {
+	return MakeEvent(level, sprintf(format, args...), args...)
+}
+
+func Eprint(level Level, args ...interface{}) Event {
+	return MakeEvent(level, sprint(args...), args...)
+}
+
+func MakeEvent(level Level, message string, values ...interface{}) Event {
+	var errors []EventError
+
+	for _, val := range values {
+		switch v := val.(type) {
+		case syscall.Errno:
+			errors = append(errors, MakeEventErrno(v))
+		case error:
+			errors = append(errors, MakeEventError(v))
+		}
+	}
+
+	return Event{
+		Info: EventInfo{Level: level, Errors: errors},
+		Data: EventData{"message": message},
+	}
+}
+
+func (c Event) Bytes() []byte {
+	b, _ := json.Marshal(c)
+	return b
+}
+
+func (c Event) String() string {
+	return string(c.Bytes())
+}
+
+func copyEventData(data ...EventData) EventData {
+	copy := EventData{}
+
+	for _, d := range data {
+		for k, v := range d {
+			copy[k] = v
+		}
+	}
+
+	return copy
+}
+
+func makeEventData(x interface{}) EventData {
 	if x != nil {
 		switch v := x.(type) {
-		case Event:
-			return v.Copy()
+		case EventData:
+			return copyEventData(v)
 
 		case map[string]interface{}:
-			return Event(v).Copy()
+			return copyEventData(v)
 		}
 
 		switch t, v := reflect.TypeOf(x), reflect.ValueOf(x); t.Kind() {
 		case reflect.Struct:
-			return makeEventFromStruct(t, v)
+			return makeEventDataFromStruct(t, v)
 
 		case reflect.Map:
-			return makeEventFromMap(t, v)
+			return makeEventDataFromMap(t, v)
 
 		case reflect.Ptr:
 			if !v.IsNil() {
-				return makeEventFrom(v.Elem().Interface())
+				return makeEventData(v.Elem().Interface())
 			}
 		}
 	}
-	return NewEvent()
+	return EventData{}
 }
 
-func makeEventFromStruct(t reflect.Type, v reflect.Value) (e Event) {
-	e = NewEvent()
+func makeEventDataFromStruct(t reflect.Type, v reflect.Value) EventData {
+	e := EventData{}
 
 	for i, n := 0, t.NumField(); i != n; i++ {
 		if ft, fv := t.Field(i), v.Field(i); ft.Anonymous {
@@ -184,11 +154,11 @@ func makeEventFromStruct(t reflect.Type, v reflect.Value) (e Event) {
 		}
 	}
 
-	return
+	return e
 }
 
-func makeEventFromMap(t reflect.Type, v reflect.Value) (e Event) {
-	e = NewEvent()
+func makeEventDataFromMap(t reflect.Type, v reflect.Value) EventData {
+	e := EventData{}
 
 	if t.Key().Kind() == reflect.String {
 		for _, k := range v.MapKeys() {
@@ -200,7 +170,7 @@ func makeEventFromMap(t reflect.Type, v reflect.Value) (e Event) {
 		}
 	}
 
-	return
+	return e
 }
 
 func parseStructField(field reflect.StructField) (name string, omitempty bool, skip bool) {
@@ -244,4 +214,13 @@ func isEmptyValue(v reflect.Value) bool {
 		return v.IsNil()
 	}
 	return false
+}
+
+func sprintf(format string, args ...interface{}) string {
+	return fmt.Sprintf(format, args...)
+}
+
+func sprint(args ...interface{}) string {
+	s := fmt.Sprintln(args...)
+	return s[:len(s)-1]
 }

@@ -195,15 +195,14 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 			continue
 		}
 
-		if len(msg.Host) == 0 {
-			msg.Host = hostname
+		if len(msg.Event.Info.Host) == 0 {
+			msg.Event.Info.Host = hostname
 		}
 
-		if msg.Time == 0 {
-			msg.Time = ecslogs.Now()
+		if msg.Event.Info.Time == 0 {
+			msg.Event.Info.Time = ecslogs.Now()
 		}
 
-		msg.ExtractContentMetadata()
 		c <- msg
 	}
 }

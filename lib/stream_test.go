@@ -85,10 +85,12 @@ func TestStreamNotExpiredDueToMessages(t *testing.T) {
 	ts := time.Now()
 	st := NewStream("A", "0123456789", ts)
 	st.Add(Message{
-		Group:   "A",
-		Stream:  "0123456789",
-		Content: "Hello World!",
-		Time:    MakeTimestamp(ts),
+		Group:  "A",
+		Stream: "0123456789",
+		Event: Event{
+			Info: EventInfo{Time: MakeTimestamp(ts)},
+			Data: EventData{"message": "Hello World!"},
+		},
 	}, ts)
 
 	if st.HasExpired(1*time.Second, ts.Add(2*time.Second)) {

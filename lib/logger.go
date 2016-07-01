@@ -9,7 +9,7 @@ type Logger struct {
 	level  Level
 	output LoggerOutput
 	depth  int
-	event  Event
+	data   EventData
 	caller func(int) (string, int, string, bool)
 }
 
@@ -17,7 +17,7 @@ type LoggerConfig struct {
 	Level  Level
 	Output LoggerOutput
 	Depth  int
-	Event  Event
+	Data   EventData
 	Caller func(int) (string, int, string, bool)
 }
 
@@ -57,7 +57,7 @@ func NewLoggerWith(config LoggerConfig) *Logger {
 		output: config.Output,
 		depth:  config.Depth,
 		caller: config.Caller,
-		event:  config.Event.Copy(),
+		data:   copyEventData(config.Data),
 	}
 }
 
@@ -71,7 +71,7 @@ func (log *Logger) With(x interface{}) *Logger {
 		output: log.output,
 		depth:  log.depth,
 		caller: log.caller,
-		event:  makeEventFrom(x).addEvent(log.event),
+		data:   copyEventData(log.data, makeEventData(x)),
 	}
 }
 
@@ -139,33 +139,37 @@ func (log *Logger) Emerg(args ...interface{}) {
 	log.put(1, EMERG, args...)
 }
 
-func (log *Logger) Log(level Level, event Event) {
-	log.put(1, level, event)
+func (log *Logger) Log(event Event) {
+	log.log(1, event)
 }
 
 func (log *Logger) putf(depth int, level Level, format string, args ...interface{}) {
 	if level <= log.level {
-		log.log(depth+1, level, Eprintf(format, args...))
+		log.log(depth+1, Eprintf(level, format, args...))
 	}
 }
 
 func (log *Logger) put(depth int, level Level, args ...interface{}) {
 	if level <= log.level {
-		log.log(depth+1, level, Eprint(args...))
+		log.log(depth+1, Eprint(level, args...))
 	}
 }
 
-func (log *Logger) log(depth int, level Level, event Event) {
-	if level <= log.level {
-		for k, v := range log.event {
-			event[k] = v
+func (log *Logger) log(depth int, event Event) {
+	if event.Info.Level <= log.level {
+		if len(log.data) != 0 {
+			if event.Data == nil {
+				event.Data = EventData{}
+			}
+			for k, v := range log.data {
+				event.Data[k] = v
+			}
 		}
 
 		if file, line, fn, ok := log.caller(log.depth + depth + 1); ok {
-			event.setSource(MessageSource(file, line, fn))
+			event.Info.Source = MessageSource(file, line, fn)
 		}
 
-		event.setLevel(level)
 		log.output.Send(event)
 	}
 }
@@ -246,8 +250,8 @@ func Emerg(args ...interface{}) {
 	defaultLogger.Emerg(args...)
 }
 
-func Log(level Level, event Event) {
-	defaultLogger.Log(level, event)
+func Log(event Event) {
+	defaultLogger.Log(event)
 }
 
 func defaultCaller(depth int) (file string, line int, fn string, ok bool) {

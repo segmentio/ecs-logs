@@ -16,7 +16,7 @@ func TestLoggerPrintf(t *testing.T) {
 			method: (*Logger).Debugf,
 			format: "Hello %s!",
 			args:   []interface{}{"World"},
-			message: `{"level":"DEBUG","message":"Hello World!","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":"Hello World!"}}
 `,
 		},
 	}
@@ -34,7 +34,7 @@ func TestLoggerPrintf(t *testing.T) {
 		test.method(log, test.format, test.args...)
 
 		if s := b.String(); s != test.message {
-			t.Errorf("\n- expected: %#v\n- found:    %#v", test.message, s)
+			t.Errorf("\n- expected: %s\n- found:    %s", test.message, s)
 		}
 	}
 }
@@ -47,7 +47,7 @@ func TestLoggerPrint(t *testing.T) {
 	}{
 		{
 			method: (*Logger).Debug,
-			message: `{"level":"DEBUG","message":"","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":""}}
 `,
 		},
 	}
@@ -65,29 +65,28 @@ func TestLoggerPrint(t *testing.T) {
 		test.method(log, test.args...)
 
 		if s := b.String(); s != test.message {
-			t.Errorf("\n- expected: %#v\n- found:    %#v", test.message, s)
+			t.Errorf("\n- expected: %s\n- found:    %s", test.message, s)
 		}
 	}
 }
 
 func TestLoggerWith(t *testing.T) {
 	tests := []struct {
-		event   Event
+		data    EventData
 		message string
 	}{
 		{
-			event: nil,
-			message: `{"level":"DEBUG","message":"the log message","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":"the log message"}}
 `,
 		},
 		{
-			event: NewEvent(),
-			message: `{"level":"DEBUG","message":"the log message","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+			data: EventData{},
+			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"message":"the log message"}}
 `,
 		},
 		{
-			event: NewEvent(Tag{"hello", "world"}),
-			message: `{"hello":"world","level":"DEBUG","message":"the log message","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"}
+			data: EventData{"hello": "world"},
+			message: `{"info":{"level":"DEBUG","source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{"hello":"world","message":"the log message"}}
 `,
 		},
 	}
@@ -102,10 +101,10 @@ func TestLoggerWith(t *testing.T) {
 			Output: NewLoggerOutput(b),
 			Caller: testCaller,
 		})
-		log.With(test.event).Debug("the log message")
+		log.With(test.data).Debug("the log message")
 
 		if s := b.String(); s != test.message {
-			t.Errorf("\n- expected: %#v\n- found:    %#v", test.message, s)
+			t.Errorf("\n- expected: %s\n- found:    %s", test.message, s)
 		}
 	}
 }
