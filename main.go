@@ -13,7 +13,9 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 
 	_ "github.com/segmentio/ecs-logs/lib/cloudwatchlogs"
+	_ "github.com/segmentio/ecs-logs/lib/datadog"
 	_ "github.com/segmentio/ecs-logs/lib/loggly"
+	_ "github.com/segmentio/ecs-logs/lib/statsd"
 	_ "github.com/segmentio/ecs-logs/lib/syslog"
 )
 
