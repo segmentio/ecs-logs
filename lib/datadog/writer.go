@@ -44,7 +44,7 @@ func dialUdpClient(addr string, group string, stream string) (statsd.Client, err
 	if dd, err := datadog.Dial(addr); err != nil {
 		return nil, err
 	} else {
-		dd.SetPrefix("ecs-logs.")
+		dd.SetPrefix("ecs-logs." + group + ".")
 		dd.SetTags("group:"+group, "stream:"+stream)
 		return client{dd}, nil
 	}
