@@ -44,7 +44,7 @@ the *stdin* source and piping your service's logs through [jq](https://stedolan.
 to pack well formatted messages.  
 Here's an example:
 ```shell
-... | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs ...
+... | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs -src stdin -dst ...
 ```
 *Note that This does require your service to output JSON formatted logs with a
 structure that ecs-logs recognize.*
