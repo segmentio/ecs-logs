@@ -43,6 +43,7 @@ journal available for testing. One way that this can be worked around is using
 the *stdin* source and piping your service's logs through [jq](https://stedolan.github.io/jq/)
 to pack well formatted messages.  
 Here's an example:
-```
-<your service command> | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs ...
-```
+```shell
+... | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs ...
+*Note that This does require your service to output JSON formatted logs with a
+structure that ecs-logs recognize.*
