@@ -35,3 +35,14 @@ That's it! The services logs should now be showing up in CloudWatch Logs.
 ### Docker Image
 
 - https://hub.docker.com/r/segment/ecs-logs
+
+### Usage on OSX
+
+If you're developing on OSX it may be inconvenient to not have the system
+journal available for testing. One way that this can be worked around is using
+the *stdin* source and piping your service's logs through [jq](https://stedolan.github.io/jq/)
+to pack well formatted messages.  
+Here's an example:
+```
+<your service command> | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs ...
+```
