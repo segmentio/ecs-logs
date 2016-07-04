@@ -46,5 +46,5 @@ Here's an example:
 ```shell
 ... | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs -src stdin -dst ...
 ```
-*Note that This does require your service to output JSON formatted logs with a
+*Note that it requires your service to output JSON formatted logs with with
 structure that ecs-logs recognize.*
