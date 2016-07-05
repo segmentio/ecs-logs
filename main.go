@@ -248,7 +248,7 @@ func flush(dests []destination, group *ecslogs.Group, stream *ecslogs.Stream, li
 		// There are cases where some log entries do appear unordered and this is
 		// causing issues with CloudWatchLogs.
 		if !sort.IsSorted(batch) {
-			sort.Sort(batch)
+			sort.Stable(batch)
 		}
 
 		logf("flushing %d messages to %s::%s (%s)", len(batch), group.Name(), stream.Name(), reason)
