@@ -93,14 +93,14 @@ func (w writer) Close() error {
 }
 
 func (w writer) WriteMessage(msg ecslogs.Message) error {
-	return w.WriteMessageBatch([]ecslogs.Message{msg})
+	return w.WriteMessageBatch(ecslogs.MessageBatch{msg})
 }
 
-func (w writer) WriteMessageBatch(batch []ecslogs.Message) error {
+func (w writer) WriteMessageBatch(batch ecslogs.MessageBatch) error {
 	return sendMetrics(w.client, extractMetrics(batch))
 }
 
-func extractMetrics(batch []ecslogs.Message) map[ecslogs.Level]*metric {
+func extractMetrics(batch ecslogs.MessageBatch) map[ecslogs.Level]*metric {
 	metrics := make(map[ecslogs.Level]*metric, 10)
 
 	for _, msg := range batch {

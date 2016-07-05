@@ -38,24 +38,24 @@ type EventInfo struct {
 	Errors []EventError `json:"errors,omitempty"`
 }
 
-func (c EventInfo) Bytes() []byte {
-	b, _ := json.Marshal(c)
+func (e EventInfo) Bytes() []byte {
+	b, _ := json.Marshal(e)
 	return b
 }
 
-func (c EventInfo) String() string {
-	return string(c.Bytes())
+func (e EventInfo) String() string {
+	return string(e.Bytes())
 }
 
 type EventData map[string]interface{}
 
-func (c EventData) Bytes() []byte {
-	b, _ := json.Marshal(c)
+func (e EventData) Bytes() []byte {
+	b, _ := json.Marshal(e)
 	return b
 }
 
-func (c EventData) String() string {
-	return string(c.Bytes())
+func (e EventData) String() string {
+	return string(e.Bytes())
 }
 
 type Event struct {
@@ -92,13 +92,13 @@ func MakeEvent(level Level, message string, values ...interface{}) Event {
 	}
 }
 
-func (c Event) Bytes() []byte {
-	b, _ := json.Marshal(c)
+func (e Event) Bytes() []byte {
+	b, _ := json.Marshal(e)
 	return b
 }
 
-func (c Event) String() string {
-	return string(c.Bytes())
+func (e Event) String() string {
+	return string(e.Bytes())
 }
 
 func copyEventData(data ...EventData) EventData {

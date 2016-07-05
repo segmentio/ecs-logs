@@ -34,7 +34,7 @@ func TestMessageString(t *testing.T) {
 }
 
 func TestMessageEncoderDecoder(t *testing.T) {
-	batch := []Message{
+	batch := MessageBatch{
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
@@ -71,7 +71,7 @@ func TestMessageEncoderDecoder(t *testing.T) {
 	// This loop reads the messages written to the pipe and rebuilds a list
 	// of messages until EOF is reached. The orignal batch and list are then
 	// compred to ensure they are the same.
-	var list []Message
+	var list MessageBatch
 	for {
 		if msg, err := d.ReadMessage(); err != nil {
 			if err == io.EOF {
@@ -94,7 +94,7 @@ func TestMessageEncoderDecoder(t *testing.T) {
 }
 
 func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
-	batch := []Message{
+	batch := MessageBatch{
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",

@@ -125,6 +125,8 @@ func (r reader) getInt(k string) (v int) {
 func (r reader) getTime() (t time.Time) {
 	if u, e := r.GetRealtimeUsec(); e == nil {
 		t = time.Unix(int64(u/1000000), int64((u%1000000)*1000))
+	} else {
+		t = time.Now()
 	}
 	return
 }

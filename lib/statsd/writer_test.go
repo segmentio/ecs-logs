@@ -8,7 +8,7 @@ import (
 )
 
 func TestExtractMetrics(t *testing.T) {
-	batch := []ecslogs.Message{
+	batch := ecslogs.MessageBatch{
 		ecslogs.Message{
 			Event: ecslogs.Event{Level: ecslogs.INFO},
 		},

@@ -8,15 +8,15 @@ import (
 
 func TestSplitMessageListHead(t *testing.T) {
 	tests := []struct {
-		list  []Message
+		list  MessageBatch
 		count int
 	}{
 		{
-			list:  []Message{},
+			list:  MessageBatch{},
 			count: 0,
 		},
 		{
-			list: []Message{
+			list: MessageBatch{
 				Message{Group: "A"},
 				Message{Group: "B"},
 				Message{Group: "C"},
@@ -24,7 +24,7 @@ func TestSplitMessageListHead(t *testing.T) {
 			count: 0,
 		},
 		{
-			list: []Message{
+			list: MessageBatch{
 				Message{Group: "A"},
 				Message{Group: "B"},
 				Message{Group: "C"},
@@ -32,7 +32,7 @@ func TestSplitMessageListHead(t *testing.T) {
 			count: 1,
 		},
 		{
-			list: []Message{
+			list: MessageBatch{
 				Message{Group: "A"},
 				Message{Group: "B"},
 				Message{Group: "C"},
@@ -150,11 +150,11 @@ func TestStreamBytes(t *testing.T) {
 		MaxBytes: m1.ContentLength() + m2.ContentLength(),
 	}, ts)
 
-	if !reflect.DeepEqual(list, []Message{m1, m2}) {
+	if !reflect.DeepEqual(list, MessageBatch{m1, m2}) {
 		t.Error("invalid list of messages flushed from stream:", list)
 	}
 
-	if !reflect.DeepEqual(st.messages, []Message{m3}) {
+	if !reflect.DeepEqual(st.messages, MessageBatch{m3}) {
 		t.Error("invalid list of messages left in stream:", st.messages)
 	}
 
@@ -168,7 +168,7 @@ func TestStreamBytes(t *testing.T) {
 		MaxBytes: m3.ContentLength() - 1,
 	}, ts)
 
-	if !reflect.DeepEqual(list, []Message{m3}) {
+	if !reflect.DeepEqual(list, MessageBatch{m3}) {
 		t.Error("invalid list of messages flushed from stream:", list)
 	}
 

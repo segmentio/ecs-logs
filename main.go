@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -238,6 +239,16 @@ func flush(dests []destination, group *ecslogs.Group, stream *ecslogs.Stream, li
 
 		if len(batch) == 0 {
 			break
+		}
+
+		// Ensure all messages in the batch are sorted. Checking if the batch is
+		// sorted is an optimization since in most cases the batch will be sorted
+		// because we're reading events that are generated live (checking for a
+		// sorted list is O(N) vs O(N*log(N)) for sorting it).
+		// There are cases where some log entries do appear unordered and this is
+		// causing issues with CloudWatchLogs.
+		if !sort.IsSorted(batch) {
+			sort.Stable(batch)
 		}
 
 		logf("flushing %d messages to %s::%s (%s)", len(batch), group.Name(), stream.Name(), reason)
