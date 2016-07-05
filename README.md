@@ -117,7 +117,7 @@ format is not something it understands, it will generate a log event where the
   "info": {
     "host": "<hostname>"
   },
-  data: { },
+  "data": { },
   "message": "2016-07-05T09:08:12.123Z - INFO - hello!"
 }
 ```
