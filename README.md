@@ -134,3 +134,4 @@ Here's an example:
 ```
 *Note that it requires your service to output JSON formatted logs with a
 structure that ecs-logs recognize.*
+
