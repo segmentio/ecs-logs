@@ -14,6 +14,9 @@ type FuncInfo struct {
 }
 
 func (info FuncInfo) String() string {
+	if info == (FuncInfo{}) {
+		return ""
+	}
 	return info.File + ":" + strconv.Itoa(info.Line) + ":" + info.Func
 }
 
