@@ -48,6 +48,10 @@ The log events can be JSON formatted with the following structure:
   "info": {
     "host": "<hostname>",
     "source": "<file:line:function>",
+    "id": "<message id>",
+    "pid": <PID>,
+    "gid": <GID>,
+    "uid": <UID>,
     "errors": [
       {
         "type": "<error type>",
