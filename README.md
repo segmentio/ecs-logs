@@ -100,7 +100,7 @@ The journald source expects to find the *CONTAINER_TAG* and *CONTAINER_NAME*
 metadata on log events, which it uses to set the group and stream to which the
 log event will be sent.
 
-The log message can be easier plain text or JSON formatted. When ecs-logs fails
+The log message can be either plain text or JSON formatted. When ecs-logs fails
 to parse a JSON message, either because the content is not JSON or because the
 format is not something it understands, it will generate a log event where the
 *message* field is set to the full log message, for example:
