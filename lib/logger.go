@@ -3,35 +3,37 @@ package ecslogs
 import (
 	"io"
 	"os"
+	"runtime"
 )
 
 type Logger struct {
-	level  Level
-	output LoggerOutput
-	depth  int
-	data   EventData
-	caller func(int) (string, int, string, bool)
+	level    Level
+	output   LoggerOutput
+	depth    int
+	data     EventData
+	funcInfo func(uintptr) (FuncInfo, bool)
 }
 
 type LoggerConfig struct {
-	Level  Level
-	Output LoggerOutput
-	Depth  int
-	Data   EventData
-	Caller func(int) (string, int, string, bool)
+	Level    Level
+	Output   LoggerOutput
+	Depth    int
+	Data     EventData
+	FuncInfo func(uintptr) (FuncInfo, bool)
 }
 
 type LoggerOutput interface {
-	Send(Event)
+	Send(Event) error
 }
 
-type LoggerOutputFunc func(Event)
+type LoggerOutputFunc func(Event) error
 
-func (f LoggerOutputFunc) Send(e Event) { f(e) }
+func (f LoggerOutputFunc) Send(e Event) error { return f(e) }
 
 func NewLoggerOutput(w io.Writer) LoggerOutput {
-	return LoggerOutputFunc(func(e Event) {
-		w.Write(append(e.Bytes(), '\n'))
+	return LoggerOutputFunc(func(e Event) (err error) {
+		_, err = w.Write(append(e.Bytes(), '\n'))
+		return
 	})
 }
 
@@ -48,16 +50,12 @@ func NewLoggerWith(config LoggerConfig) *Logger {
 		config.Output = NewLoggerOutput(os.Stdout)
 	}
 
-	if config.Caller == nil {
-		config.Caller = defaultCaller
-	}
-
 	return &Logger{
-		level:  config.Level,
-		output: config.Output,
-		depth:  config.Depth,
-		caller: config.Caller,
-		data:   copyEventData(config.Data),
+		level:    config.Level,
+		output:   config.Output,
+		depth:    config.Depth,
+		funcInfo: config.FuncInfo,
+		data:     copyEventData(config.Data),
 	}
 }
 
@@ -67,11 +65,11 @@ func (log *Logger) Level() Level {
 
 func (log *Logger) With(x interface{}) *Logger {
 	return &Logger{
-		level:  log.level,
-		output: log.output,
-		depth:  log.depth,
-		caller: log.caller,
-		data:   copyEventData(log.data, makeEventData(x)),
+		level:    log.level,
+		output:   log.output,
+		depth:    log.depth,
+		funcInfo: log.funcInfo,
+		data:     copyEventData(log.data, makeEventData(x)),
 	}
 }
 
@@ -139,8 +137,8 @@ func (log *Logger) Emerg(args ...interface{}) {
 	log.put(1, EMERG, args...)
 }
 
-func (log *Logger) Log(event Event) {
-	log.log(1, event)
+func (log *Logger) Log(event Event) error {
+	return log.log(1, event)
 }
 
 func (log *Logger) putf(depth int, level Level, format string, args ...interface{}) {
@@ -155,7 +153,7 @@ func (log *Logger) put(depth int, level Level, args ...interface{}) {
 	}
 }
 
-func (log *Logger) log(depth int, event Event) {
+func (log *Logger) log(depth int, event Event) (err error) {
 	if event.Level <= log.level {
 		if len(log.data) != 0 {
 			if event.Data == nil {
@@ -166,19 +164,24 @@ func (log *Logger) log(depth int, event Event) {
 			}
 		}
 
-		if file, line, fn, ok := log.caller(log.depth + depth + 1); ok {
-			event.Info.Source = MessageSource(file, line, fn)
+		if log.funcInfo != nil {
+			if pc, _, _, ok := runtime.Caller(log.depth + depth + 1); ok {
+				if info, ok := log.funcInfo(pc); ok {
+					event.Info.Source = info.String()
+				}
+			}
 		}
 
-		log.output.Send(event)
+		err = log.output.Send(event)
 	}
+	return
 }
 
 var (
 	defaultLogger = NewLoggerWith(LoggerConfig{
-		Output: NewLoggerOutput(os.Stdout),
-		Depth:  1,
-		Caller: Caller,
+		Output:   NewLoggerOutput(os.Stdout),
+		Depth:    1,
+		FuncInfo: GetFuncInfo,
 	})
 )
 
@@ -250,10 +253,6 @@ func Emerg(args ...interface{}) {
 	defaultLogger.Emerg(args...)
 }
 
-func Log(event Event) {
-	defaultLogger.Log(event)
-}
-
-func defaultCaller(depth int) (file string, line int, fn string, ok bool) {
-	return
+func Log(event Event) error {
+	return defaultLogger.Log(event)
 }

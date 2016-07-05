@@ -14,25 +14,46 @@ func NewHandler(w io.Writer) apex.Handler {
 }
 
 func NewHandlerWith(config ecslogs.LoggerConfig) apex.Handler {
+	// Extract the FuncInfo field from the logger configuration, that way the
+	// default logic for looking up the caller information will not be executed
+	// and we can provide one that is compatible with the apex/log package.
+	funcInfo := config.FuncInfo
+	config.FuncInfo = nil
+
 	logger := ecslogs.NewLoggerWith(config)
-	return apex.HandlerFunc(func(entry *apex.Entry) (err error) {
-		logger.Log(makeEvent(entry))
-		return
+
+	if funcInfo == nil {
+		return apex.HandlerFunc(func(entry *apex.Entry) error {
+			return logger.Log(makeEvent(entry, ""))
+		})
+	}
+
+	return apex.HandlerFunc(func(entry *apex.Entry) error {
+		var source string
+
+		if pc, ok := ecslogs.GuessCaller(config.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
+			if info, ok := funcInfo(pc); ok {
+				source = info.String()
+			}
+		}
+
+		return logger.Log(makeEvent(entry, source))
 	})
 }
 
-func makeEvent(entry *apex.Entry) ecslogs.Event {
+func makeEvent(entry *apex.Entry, source string) ecslogs.Event {
 	return ecslogs.Event{
 		Level:   makeLevel(entry.Level),
-		Info:    makeEventInfo(entry),
+		Info:    makeEventInfo(entry, source),
 		Data:    makeEventData(entry),
 		Time:    entry.Timestamp,
 		Message: entry.Message,
 	}
 }
 
-func makeEventInfo(entry *apex.Entry) ecslogs.EventInfo {
+func makeEventInfo(entry *apex.Entry, source string) ecslogs.EventInfo {
 	return ecslogs.EventInfo{
+		Source: source,
 		Errors: makeErrors(entry.Fields),
 	}
 }

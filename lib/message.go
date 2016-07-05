@@ -1,10 +1,6 @@
 package ecslogs
 
-import (
-	"encoding/json"
-	"strconv"
-	"strings"
-)
+import "encoding/json"
 
 type Message struct {
 	Group  string `json:"group,omitempty"`
@@ -23,22 +19,4 @@ func (m Message) String() string {
 
 func (m Message) ContentLength() int {
 	return jsonLen(m.Event)
-}
-
-func MessageSource(file string, line int, function string) string {
-	parts := make([]string, 0, 3)
-
-	if len(file) != 0 {
-		parts = append(parts, file)
-	}
-
-	if line != 0 {
-		parts = append(parts, strconv.Itoa(line))
-	}
-
-	if len(function) != 0 {
-		parts = append(parts, function)
-	}
-
-	return strings.Join(parts, ":")
 }

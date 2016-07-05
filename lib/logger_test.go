@@ -16,7 +16,7 @@ func TestLoggerPrintf(t *testing.T) {
 			method: (*Logger).Debugf,
 			format: "Hello %s!",
 			args:   []interface{}{"World"},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{},"message":"Hello World!"}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:TestLoggerPrintf"},"data":{},"message":"Hello World!"}
 `,
 		},
 	}
@@ -28,8 +28,8 @@ func TestLoggerPrintf(t *testing.T) {
 		b.Reset()
 
 		log := NewLoggerWith(LoggerConfig{
-			Output: NewLoggerOutput(b),
-			Caller: testCaller,
+			Output:   NewLoggerOutput(b),
+			FuncInfo: testFuncInfo,
 		})
 		test.method(log, test.format, test.args...)
 
@@ -47,7 +47,7 @@ func TestLoggerPrint(t *testing.T) {
 	}{
 		{
 			method: (*Logger).Debug,
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:F"},"data":{},"message":""}
+			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:TestLoggerPrint"},"data":{},"message":""}
 `,
 		},
 	}
@@ -59,8 +59,8 @@ func TestLoggerPrint(t *testing.T) {
 		b.Reset()
 
 		log := NewLoggerWith(LoggerConfig{
-			Output: NewLoggerOutput(b),
-			Caller: testCaller,
+			Output:   NewLoggerOutput(b),
+			FuncInfo: testFuncInfo,
 		})
 		test.method(log, test.args...)
 
@@ -153,6 +153,10 @@ func TestLoggerWith(t *testing.T) {
 	}
 }
 
-func testCaller(_ int) (string, int, string, bool) {
-	return "github.com/segmentio/ecs-logs/lib/logger_test.go", 42, "F", true
+func testFuncInfo(pc uintptr) (info FuncInfo, ok bool) {
+	if info, ok = GetFuncInfo(pc); !ok {
+		return
+	}
+	info.Line = 42
+	return
 }
