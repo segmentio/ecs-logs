@@ -23,10 +23,10 @@ func (w *writer) Close() error {
 }
 
 func (w *writer) WriteMessage(msg ecslogs.Message) error {
-	return w.WriteMessageBatch([]ecslogs.Message{msg})
+	return w.WriteMessageBatch(ecslogs.MessageBatch{msg})
 }
 
-func (w *writer) WriteMessageBatch(batch []ecslogs.Message) (err error) {
+func (w *writer) WriteMessageBatch(batch ecslogs.MessageBatch) (err error) {
 	if len(batch) == 0 {
 		return
 	}

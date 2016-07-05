@@ -160,7 +160,7 @@ func (w *writer) Close() (err error) {
 	return
 }
 
-func (w *writer) WriteMessageBatch(batch []ecslogs.Message) (err error) {
+func (w *writer) WriteMessageBatch(batch ecslogs.MessageBatch) (err error) {
 	for _, msg := range batch {
 		if err = w.write(msg); err != nil {
 			return

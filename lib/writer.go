@@ -10,7 +10,7 @@ type Writer interface {
 
 	WriteMessage(Message) error
 
-	WriteMessageBatch([]Message) error
+	WriteMessageBatch(MessageBatch) error
 }
 
 func NewMessageEncoder(w io.Writer) Writer {
@@ -34,7 +34,7 @@ func (e encoder) WriteMessage(msg Message) (err error) {
 	return
 }
 
-func (e encoder) WriteMessageBatch(batch []Message) (err error) {
+func (e encoder) WriteMessageBatch(batch MessageBatch) (err error) {
 	for _, msg := range batch {
 		if err = e.WriteMessage(msg); err != nil {
 			return

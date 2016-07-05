@@ -20,3 +20,17 @@ func (m Message) String() string {
 func (m Message) ContentLength() int {
 	return jsonLen(m.Event)
 }
+
+type MessageBatch []Message
+
+func (list MessageBatch) Swap(i int, j int) {
+	list[i], list[j] = list[j], list[i]
+}
+
+func (list MessageBatch) Less(i int, j int) bool {
+	return list[i].Event.Time.Before(list[j].Event.Time)
+}
+
+func (list MessageBatch) Len() int {
+	return len(list)
+}
