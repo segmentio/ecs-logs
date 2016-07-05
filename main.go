@@ -13,7 +13,9 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 
 	_ "github.com/segmentio/ecs-logs/lib/cloudwatchlogs"
+	_ "github.com/segmentio/ecs-logs/lib/datadog"
 	_ "github.com/segmentio/ecs-logs/lib/loggly"
+	_ "github.com/segmentio/ecs-logs/lib/statsd"
 	_ "github.com/segmentio/ecs-logs/lib/syslog"
 )
 
@@ -74,7 +76,7 @@ func main() {
 		MaxTime:  flushTimeout,
 	}
 
-	expchan := time.Tick(flushTimeout)
+	expchan := time.Tick(flushTimeout / 2)
 	msgchan := make(chan ecslogs.Message, len(readers))
 	sigchan := make(chan os.Signal, 1)
 	counter := int32(len(readers))
@@ -98,7 +100,6 @@ func main() {
 			flush(dests, group, stream, limits, now, join)
 
 		case <-expchan:
-			logf("timer pulse, flushing streams that haven't been in a while and clearing expired cache...")
 			now := time.Now()
 			flushAll(dests, store, limits, now, join)
 			removeExpired(dests, store, cacheTimeout, now)
