@@ -243,11 +243,27 @@ func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
 
 func dialWriter(network string, address string, config *tls.Config) (w io.Writer, err error) {
 	var conn net.Conn
+	var dial func(string, string) (net.Conn, error)
 
 	if network == "tls" {
-		conn, err = tls.Dial("tcp", address, config)
+		network, dial = "tcp", func(network string, address string) (net.Conn, error) {
+			return tls.Dial(network, address, config)
+		}
 	} else {
-		conn, err = net.Dial(network, address)
+		dial = net.Dial
+	}
+
+	for attempt := 1; true; attempt++ {
+		if conn, err = dial(network, address); err == nil {
+			break
+		}
+
+		if attempt == 3 {
+			return
+		}
+
+		err = nil
+		time.Sleep(1 * time.Second)
 	}
 
 	if err == nil {
