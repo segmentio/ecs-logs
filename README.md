@@ -128,5 +128,5 @@ Here's an example:
 ```shell
 ... | jq '. | {group: "<group>", stream: "<stream>", event: .}' | ecs-logs -src stdin -dst ...
 ```
-*Note that it requires your service to output JSON formatted logs with with
+*Note that it requires your service to output JSON formatted logs with a
 structure that ecs-logs recognize.*
