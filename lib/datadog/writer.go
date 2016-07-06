@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/segmentio/ecs-logs/lib"
 	"github.com/segmentio/ecs-logs/lib/statsd"
@@ -37,27 +38,19 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 }
 
 type client struct {
-	dd *datadog.Client
+	*datadog.Client
 }
 
 func dialUdpClient(addr string, group string, stream string) (statsd.Client, error) {
 	if dd, err := datadog.Dial(addr); err != nil {
 		return nil, err
 	} else {
-		dd.SetPrefix("ecs-logs." + group + ".")
+		dd.SetPrefix("ecs_logs." + strings.Replace(group, "-", "_", -1) + ".")
 		dd.SetTags("group:"+group, "stream:"+stream)
 		return client{dd}, nil
 	}
 }
 
-func (c client) Close() error {
-	return c.dd.Close()
-}
-
-func (c client) Flush() error {
-	return c.dd.Flush()
-}
-
 func (c client) IncrBy(name string, value int) error {
-	return c.dd.IncrBy(name, value)
+	return c.Client.IncrBy(name, value)
 }

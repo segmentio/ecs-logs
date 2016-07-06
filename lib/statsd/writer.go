@@ -75,7 +75,7 @@ func dial(addr string, group string, stream string) (Client, error) {
 	if cli, err := statsd.Dial(addr); err != nil {
 		return nil, err
 	} else {
-		cli.Prefix("ecs-logs." + group + ".")
+		cli.Prefix("ecs_logs." + strings.Replace(group, "-", "_", -1) + ".")
 		return cli, nil
 	}
 }
