@@ -45,7 +45,7 @@ func dialUdpClient(addr string, group string, stream string) (statsd.Client, err
 		return nil, err
 	} else {
 		dd.SetPrefix("ecs-logs.event.level.")
-		dd.SetTags("group:" + group)
+		dd.SetTags("group:"+group, "stream:"+stream)
 		return client{dd}, nil
 	}
 }
