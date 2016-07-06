@@ -2,6 +2,7 @@ package lib
 
 import (
 	"github.com/apex/log"
+	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs-go/apex"
 )
 
@@ -40,6 +41,14 @@ func (h *LogHandler) HandleLog(entry *log.Entry) (err error) {
 
 	if len(msg.Event.Info.Host) == 0 {
 		msg.Event.Info.Host = h.Hostname
+	}
+
+	if len(msg.Event.Info.Source) == 0 {
+		if pc, ok := ecslogs.GuessCaller(0, 10, "github.com/segmentio/ecs-logs/lib", "github.com/apex/log"); ok {
+			if info, ok := ecslogs.GetFuncInfo(pc); ok {
+				msg.Event.Info.Source = info.String()
+			}
+		}
 	}
 
 	h.Queue.Push(msg)
