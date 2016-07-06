@@ -155,7 +155,7 @@ func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, s
 }
 
 func joinGroupStream(group string, stream string) string {
-	return group + "::" + stream
+	return group + ":" + stream
 }
 
 var (
