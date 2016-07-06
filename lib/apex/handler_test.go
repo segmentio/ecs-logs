@@ -13,8 +13,8 @@ import (
 func TestHandler(t *testing.T) {
 	buf := &bytes.Buffer{}
 	log := &apex.Logger{
-		Handler: NewHandlerWith(ecslogs.LoggerConfig{
-			Output:   ecslogs.NewLoggerOutput(buf),
+		Handler: NewHandlerWith(Config{
+			Output:   buf,
 			FuncInfo: testFuncInfo,
 		}),
 		Level: apex.DebugLevel,

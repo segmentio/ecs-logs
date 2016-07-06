@@ -113,66 +113,6 @@ func copyEventData(data ...EventData) EventData {
 	return copy
 }
 
-func makeEventData(x interface{}) EventData {
-	if x != nil {
-		switch v := x.(type) {
-		case EventData:
-			return copyEventData(v)
-
-		case map[string]interface{}:
-			return copyEventData(v)
-		}
-
-		switch t, v := reflect.TypeOf(x), reflect.ValueOf(x); t.Kind() {
-		case reflect.Struct:
-			return makeEventDataFromStruct(t, v)
-
-		case reflect.Map:
-			return makeEventDataFromMap(t, v)
-
-		case reflect.Ptr:
-			if !v.IsNil() {
-				return makeEventData(v.Elem().Interface())
-			}
-		}
-	}
-	return EventData{}
-}
-
-func makeEventDataFromStruct(t reflect.Type, v reflect.Value) EventData {
-	e := EventData{}
-
-	for i, n := 0, t.NumField(); i != n; i++ {
-		if ft, fv := t.Field(i), v.Field(i); ft.Anonymous {
-			continue
-		} else if name, omitempty, skip := parseJsonStructField(ft); skip {
-			continue
-		} else if omitempty && isEmptyValue(fv) {
-			continue
-		} else {
-			e[name] = fv.Interface()
-		}
-	}
-
-	return e
-}
-
-func makeEventDataFromMap(t reflect.Type, v reflect.Value) EventData {
-	e := EventData{}
-
-	if t.Key().Kind() == reflect.String {
-		for _, k := range v.MapKeys() {
-			e[k.String()] = v.MapIndex(k).Interface()
-		}
-	} else {
-		for _, k := range v.MapKeys() {
-			e[fmt.Sprint(k.Interface())] = v.MapIndex(k).Interface()
-		}
-	}
-
-	return e
-}
-
 func sprintf(format string, args ...interface{}) string {
 	return fmt.Sprintf(format, args...)
 }

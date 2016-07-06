@@ -7,22 +7,20 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 )
 
-func NewHandler(w io.Writer) apex.Handler {
-	return NewHandlerWith(ecslogs.LoggerConfig{
-		Output: ecslogs.NewLoggerOutput(w),
-	})
+type Config struct {
+	Output   io.Writer
+	Depth    int
+	FuncInfo func(uintptr) (ecslogs.FuncInfo, bool)
 }
 
-func NewHandlerWith(config ecslogs.LoggerConfig) apex.Handler {
-	// Extract the FuncInfo field from the logger configuration, that way the
-	// default logic for looking up the caller information will not be executed
-	// and we can provide one that is compatible with the apex/log package.
-	funcInfo := config.FuncInfo
-	config.FuncInfo = nil
+func NewHandler(w io.Writer) apex.Handler {
+	return NewHandlerWith(Config{Output: w})
+}
 
-	logger := ecslogs.NewLoggerWith(config)
+func NewHandlerWith(c Config) apex.Handler {
+	logger := ecslogs.NewLogger(c.Output)
 
-	if funcInfo == nil {
+	if c.FuncInfo == nil {
 		return apex.HandlerFunc(func(entry *apex.Entry) error {
 			return logger.Log(makeEvent(entry, ""))
 		})
@@ -31,8 +29,8 @@ func NewHandlerWith(config ecslogs.LoggerConfig) apex.Handler {
 	return apex.HandlerFunc(func(entry *apex.Entry) error {
 		var source string
 
-		if pc, ok := ecslogs.GuessCaller(config.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
-			if info, ok := funcInfo(pc); ok {
+		if pc, ok := ecslogs.GuessCaller(c.Depth, 10, "github.com/segmentio/ecs-logs", "github.com/apex/log"); ok {
+			if info, ok := c.FuncInfo(pc); ok {
 				source = info.String()
 			}
 		}

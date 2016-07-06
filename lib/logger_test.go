@@ -5,18 +5,14 @@ import (
 	"testing"
 )
 
-func TestLoggerPrintf(t *testing.T) {
+func TestLoggerLog(t *testing.T) {
 	tests := []struct {
-		method  func(*Logger, string, ...interface{})
-		format  string
-		args    []interface{}
-		message string
+		e Event
+		s string
 	}{
 		{
-			method: (*Logger).Debugf,
-			format: "Hello %s!",
-			args:   []interface{}{"World"},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:TestLoggerPrintf"},"data":{},"message":"Hello World!"}
+			e: Eprintf(DEBUG, "Hello %s!", "World"),
+			s: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"Hello World!"}
 `,
 		},
 	}
@@ -27,136 +23,11 @@ func TestLoggerPrintf(t *testing.T) {
 	for _, test := range tests {
 		b.Reset()
 
-		log := NewLoggerWith(LoggerConfig{
-			Output:   NewLoggerOutput(b),
-			FuncInfo: testFuncInfo,
-		})
-		test.method(log, test.format, test.args...)
+		log := NewLogger(b)
+		log.Log(test.e)
 
-		if s := b.String(); s != test.message {
-			t.Errorf("\n- expected: %s\n- found:    %s", test.message, s)
+		if s := b.String(); s != test.s {
+			t.Errorf("\n- expected: %s\n- found:    %s", test.s, s)
 		}
 	}
-}
-
-func TestLoggerPrint(t *testing.T) {
-	tests := []struct {
-		method  func(*Logger, ...interface{})
-		args    []interface{}
-		message string
-	}{
-		{
-			method: (*Logger).Debug,
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{"source":"github.com/segmentio/ecs-logs/lib/logger_test.go:42:TestLoggerPrint"},"data":{},"message":""}
-`,
-		},
-	}
-
-	b := &bytes.Buffer{}
-	b.Grow(1024)
-
-	for _, test := range tests {
-		b.Reset()
-
-		log := NewLoggerWith(LoggerConfig{
-			Output:   NewLoggerOutput(b),
-			FuncInfo: testFuncInfo,
-		})
-		test.method(log, test.args...)
-
-		if s := b.String(); s != test.message {
-			t.Errorf("\n- expected: %s\n- found:    %s", test.message, s)
-		}
-	}
-}
-
-func TestLoggerWith(t *testing.T) {
-	tests := []struct {
-		data    interface{}
-		message string
-	}{
-		{
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
-`,
-		},
-
-		{
-			data: EventData{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
-`,
-		},
-
-		{
-			data: EventData{"hello": "world"},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"hello":"world"},"message":"the log message"}
-`,
-		},
-
-		{
-			data: struct{}{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
-`,
-		},
-
-		{
-			data: struct{ Answer int }{42},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"Answer":42},"message":"the log message"}
-`,
-		},
-
-		{
-			data: struct {
-				Answer int `json:"answer"`
-			}{42},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"answer":42},"message":"the log message"}
-`,
-		},
-
-		{
-			data: struct {
-				Answer int `json:",omitempty"`
-			}{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
-`,
-		},
-
-		{
-			data: struct {
-				Answer int `json:"-"`
-			}{},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{},"message":"the log message"}
-`,
-		},
-
-		{
-			data: struct {
-				Question string
-				Answer   string
-			}{"How are you?", "Well"},
-			message: `{"level":"DEBUG","time":"0001-01-01T00:00:00Z","info":{},"data":{"Answer":"Well","Question":"How are you?"},"message":"the log message"}
-`,
-		},
-	}
-
-	b := &bytes.Buffer{}
-	b.Grow(1024)
-
-	for _, test := range tests {
-		b.Reset()
-
-		log := NewLoggerWith(LoggerConfig{Output: NewLoggerOutput(b)})
-		log.With(test.data).Debug("the log message")
-
-		if s := b.String(); s != test.message {
-			t.Errorf("\n- expected: %s\n- found:    %s", test.message, s)
-		}
-	}
-}
-
-func testFuncInfo(pc uintptr) (info FuncInfo, ok bool) {
-	if info, ok = GetFuncInfo(pc); !ok {
-		return
-	}
-	info.Line = 42
-	return
 }

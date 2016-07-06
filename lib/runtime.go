@@ -37,22 +37,25 @@ search:
 		var info FuncInfo
 
 		if info, ok = GetFuncInfo(pc); !ok {
-			return
+			break
 		}
 
 		for _, pkg := range ignorePackages {
-			if strings.HasPrefix(info.File, pkg) {
+			if strings.Contains(info.File, pkg) {
 				continue search
 			}
 		}
 
 		// Now that we got out of the packages that we wanted to ignore we need
 		// to go up a couple more stack frames if the `skip` value is not zero.
-		if i += skip; i >= len(frames) {
-			break
+		if i += skip; i < len(frames) {
+			pc = frames[i]
+		} else {
+			if pc, _, _, ok = runtime.Caller(i + 1); !ok {
+				break
+			}
 		}
 
-		pc = frames[i]
 		ok = true
 		return
 	}

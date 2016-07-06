@@ -54,3 +54,9 @@ func TestFuncInfoString(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkGuessCaller(b *testing.B) {
+	for i := 0; i != b.N; i++ {
+		GuessCaller(1, 10, "github.com/segmentio/ecs-logs")
+	}
+}
