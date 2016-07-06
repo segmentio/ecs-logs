@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
+	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs/lib"
 	"github.com/segmentio/ecs-logs/lib/statsd"
 	"github.com/statsd/datadog"
@@ -44,12 +46,12 @@ func dialUdpClient(addr string, group string, stream string) (statsd.Client, err
 	if dd, err := datadog.Dial(addr); err != nil {
 		return nil, err
 	} else {
-		dd.SetPrefix("ecs-logs.event.level.")
+		dd.SetPrefix("ecs-logs.")
 		dd.SetTags("group:"+group, "stream:"+stream)
 		return client{dd}, nil
 	}
 }
 
-func (c client) IncrBy(name string, value int) error {
-	return c.Client.IncrBy(name, value)
+func (c client) IncrEvents(level ecslogs.Level, value int) error {
+	return c.Client.IncrBy("events.count", value, "level:"+strings.ToLower(level.String()))
 }

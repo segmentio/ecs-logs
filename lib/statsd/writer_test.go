@@ -1,7 +1,6 @@
 package statsd
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/segmentio/ecs-logs-go"
@@ -57,10 +56,6 @@ func TestExtractMetrics(t *testing.T) {
 		default:
 			t.Errorf("invalid metric level: %s", lvl)
 			continue
-		}
-
-		if m.name != strings.ToLower(lvl.String()) {
-			t.Errorf("invalid metric name for level %s: %s", lvl, m.name)
 		}
 	}
 

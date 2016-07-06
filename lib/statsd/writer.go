@@ -17,7 +17,7 @@ type Client interface {
 
 	Flush() error
 
-	IncrBy(name string, value int) error
+	IncrEvents(ecslogs.Level, int) error
 }
 
 type WriterConfig struct {
@@ -76,8 +76,16 @@ func dial(addr string, group string, stream string) (Client, error) {
 		return nil, err
 	} else {
 		cli.Prefix("ecs-logs." + group + ".")
-		return cli, nil
+		return client{cli}, nil
 	}
+}
+
+type client struct {
+	*statsd.Client
+}
+
+func (c client) IncrEvents(level ecslogs.Level, value int) error {
+	return c.IncrBy(strings.ToLower(level.String()), value)
 }
 
 type writer struct {
@@ -85,7 +93,6 @@ type writer struct {
 }
 
 type metric struct {
-	name  string
 	value int
 }
 
@@ -105,22 +112,20 @@ func extractMetrics(batch lib.MessageBatch) map[ecslogs.Level]*metric {
 	metrics := make(map[ecslogs.Level]*metric, 10)
 
 	for _, msg := range batch {
-		m := metrics[msg.Event.Level]
-
-		if m == nil {
-			m = &metric{name: strings.ToLower(msg.Event.Level.String())}
+		if m := metrics[msg.Event.Level]; m == nil {
+			m = &metric{value: 1}
 			metrics[msg.Event.Level] = m
+		} else {
+			m.value++
 		}
-
-		m.value++
 	}
 
 	return metrics
 }
 
 func sendMetrics(client Client, metrics map[ecslogs.Level]*metric) (err error) {
-	for _, m := range metrics {
-		if e := client.IncrBy(m.name, m.value); e != nil {
+	for lvl, met := range metrics {
+		if e := client.IncrEvents(lvl, met.value); e != nil {
 			err = lib.AppendError(err, e)
 		}
 	}
