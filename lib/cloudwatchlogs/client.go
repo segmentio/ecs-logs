@@ -1,7 +1,6 @@
 package cloudwatchlogs
 
 import (
-	"errors"
 	"strings"
 	"sync"
 
@@ -156,7 +155,3 @@ func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, s
 func joinGroupStream(group string, stream string) string {
 	return group + "::" + stream
 }
-
-var (
-	errDescribeLogStream = errors.New("getting the log stream description failed")
-)
