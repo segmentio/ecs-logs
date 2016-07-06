@@ -82,7 +82,11 @@ var (
 			// leaked... This is OK in the ecs-logs use case because only one
 			// stdin reader will be instantiated.
 			r, w := io.Pipe()
-			go io.Copy(w, os.Stdin)
+
+			go func() {
+				defer w.Close()
+				io.Copy(w, os.Stdin)
+			}()
 
 			// We use the Close method of the write end of the pipe so when it's
 			// called the read end will start returning io.EOF to indicate a
