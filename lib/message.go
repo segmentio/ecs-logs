@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/segmentio/ecs-logs-go"
 )
@@ -37,4 +38,42 @@ func (list MessageBatch) Less(i int, j int) bool {
 
 func (list MessageBatch) Len() int {
 	return len(list)
+}
+
+type MessageQueue struct {
+	C      <-chan struct{}
+	signal chan struct{}
+	mutex  sync.Mutex
+	batch  MessageBatch
+}
+
+func NewMessageQueue() *MessageQueue {
+	c := make(chan struct{}, 1)
+	return &MessageQueue{
+		C:      c,
+		signal: c,
+		batch:  make(MessageBatch, 0, 100),
+	}
+}
+
+func (q *MessageQueue) Push(msg Message) {
+	q.mutex.Lock()
+	q.batch = append(q.batch, msg)
+	q.mutex.Unlock()
+}
+
+func (q *MessageQueue) Notify() {
+	select {
+	default:
+	case q.signal <- struct{}{}:
+	}
+}
+
+func (q *MessageQueue) Flush() (batch MessageBatch) {
+	q.mutex.Lock()
+	batch = make(MessageBatch, len(q.batch))
+	copy(batch, q.batch)
+	q.batch = q.batch[:0]
+	q.mutex.Unlock()
+	return
 }
