@@ -14,7 +14,7 @@ func TestHandler(t *testing.T) {
 	buf := &bytes.Buffer{}
 	log := &apex.Logger{
 		Handler: NewHandlerWith(ecslogs.LoggerConfig{
-			Output:   ecslogs.NewLoggerOutput(buf),
+			Output:   buf,
 			FuncInfo: testFuncInfo,
 		}),
 		Level: apex.DebugLevel,

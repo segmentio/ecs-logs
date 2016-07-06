@@ -9,7 +9,7 @@ import (
 
 func NewHandler(w io.Writer) apex.Handler {
 	return NewHandlerWith(ecslogs.LoggerConfig{
-		Output: ecslogs.NewLoggerOutput(w),
+		Output: w,
 	})
 }
 
@@ -20,7 +20,7 @@ func NewHandlerWith(config ecslogs.LoggerConfig) apex.Handler {
 	funcInfo := config.FuncInfo
 	config.FuncInfo = nil
 
-	logger := ecslogs.NewLoggerWith(config)
+	logger := ecslogs.NewLogger(config)
 
 	if funcInfo == nil {
 		return apex.HandlerFunc(func(entry *apex.Entry) error {

@@ -28,7 +28,7 @@ func (f *formatter) Format(entry *logrus.Entry) (b []byte, err error) {
 	buf.Grow(1024)
 
 	cfg := f.config
-	cfg.Output = ecslogs.NewLoggerOutput(buf)
+	cfg.Output = buf
 	cfg.FuncInfo = nil
 
 	if f.config.FuncInfo != nil {
@@ -39,7 +39,7 @@ func (f *formatter) Format(entry *logrus.Entry) (b []byte, err error) {
 		}
 	}
 
-	log := ecslogs.NewLoggerWith(cfg)
+	log := ecslogs.NewLogger(cfg)
 
 	if err = log.Log(makeEvent(entry, source)); err == nil {
 		b = buf.Bytes()
