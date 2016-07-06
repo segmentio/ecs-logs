@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"sort"
@@ -53,7 +54,7 @@ func main() {
 
 	hostname, _ = os.Hostname()
 	log.SetLevel(log.DebugLevel)
-	log.SetHandler(cli.New(os.Stdout))
+	log.SetHandler(cli.New(os.Stderr))
 
 	flag.StringVar(&src, "src", "stdin", "A comma separated list of log sources from which messages will be read ["+strings.Join(lib.SourcesAvailable(), ", ")+"]")
 	flag.StringVar(&dst, "dst", "stdout", "A comma separated list of log destinations to which messages will be written ["+strings.Join(lib.DestinationsAvailable(), ", ")+"]")
@@ -101,7 +102,7 @@ func main() {
 		Queue:    lib.NewMessageQueue(),
 	}
 	log.SetLevel(log.Level(level))
-	log.SetHandler(multi.New(cli.New(os.Stdout), logger))
+	log.SetHandler(multi.New(cli.New(os.Stderr), logger))
 
 	expchan := time.Tick(flushTimeout / 2)
 	msgchan := make(chan lib.Message, len(readers))
@@ -216,10 +217,16 @@ func read(r reader, c chan<- lib.Message, counter *int32, hostname string) {
 		var err error
 
 		if msg, err = r.ReadMessage(); err != nil {
-			log.WithFields(log.Fields{
-				"reader": r.name,
-				"error":  err,
-			}).Error("the message reader failed")
+			if err == io.EOF {
+				log.WithFields(log.Fields{
+					"reader": r.name,
+				}).Info("the message reader was closed")
+			} else {
+				log.WithFields(log.Fields{
+					"reader": r.name,
+					"error":  err,
+				}).Error("the message reader failed")
+			}
 			return
 		}
 

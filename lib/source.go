@@ -83,7 +83,14 @@ var (
 			// stdin reader will be instantiated.
 			r, w := io.Pipe()
 			go io.Copy(w, os.Stdin)
-			return NewMessageDecoder(r), nil
+
+			// We use the Close method of the write end of the pipe so when it's
+			// called the read end will start returning io.EOF to indicate a
+			// graceful shutdown.
+			return NewMessageDecoder(struct {
+				io.Reader
+				io.Closer
+			}{r, w}), nil
 		}),
 	}
 )
