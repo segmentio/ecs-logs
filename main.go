@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
+	"os/signal"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/apex/log"
@@ -107,6 +108,7 @@ func main() {
 	sigchan := make(chan os.Signal, 1)
 	counter := int32(len(readers))
 	startReaders(readers, msgchan, &counter, hostname)
+	setupSignals(sigchan)
 
 	for {
 		select {
@@ -185,6 +187,10 @@ func openSources(sources []source) (readers []reader, err error) {
 	return
 }
 
+func setupSignals(sigchan chan<- os.Signal) {
+	signal.Notify(sigchan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+}
+
 func startReaders(readers []reader, msgchan chan<- lib.Message, counter *int32, hostname string) {
 	for _, reader := range readers {
 		go read(reader, msgchan, counter, hostname)
@@ -210,14 +216,11 @@ func read(r reader, c chan<- lib.Message, counter *int32, hostname string) {
 		var err error
 
 		if msg, err = r.ReadMessage(); err != nil {
-			if err == io.EOF {
-				break
-			}
 			log.WithFields(log.Fields{
 				"reader": r.name,
 				"error":  err,
 			}).Error("the message reader failed")
-			continue
+			return
 		}
 
 		if len(msg.Group) == 0 {
