@@ -7,41 +7,36 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 )
 
+type Config struct {
+	Depth    int
+	FuncInfo func(uintptr) (ecslogs.FuncInfo, bool)
+}
+
 func NewFormatter() logrus.Formatter {
-	return NewFormatterWith(ecslogs.LoggerConfig{})
+	return NewFormatterWith(Config{})
 }
 
-func NewFormatterWith(config ecslogs.LoggerConfig) logrus.Formatter {
-	return &formatter{
-		config: config,
-	}
+func NewFormatterWith(c Config) logrus.Formatter {
+	return formatter(c)
 }
 
-type formatter struct {
-	config ecslogs.LoggerConfig
-}
+type formatter Config
 
-func (f *formatter) Format(entry *logrus.Entry) (b []byte, err error) {
+func (f formatter) Format(entry *logrus.Entry) (b []byte, err error) {
 	var source string
 
-	buf := &bytes.Buffer{}
-	buf.Grow(1024)
-
-	cfg := f.config
-	cfg.Output = buf
-	cfg.FuncInfo = nil
-
-	if f.config.FuncInfo != nil {
-		if pc, ok := ecslogs.GuessCaller(f.config.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
-			if info, ok := f.config.FuncInfo(pc); ok {
+	if f.FuncInfo != nil {
+		if pc, ok := ecslogs.GuessCaller(f.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
+			if info, ok := f.FuncInfo(pc); ok {
 				source = info.String()
 			}
 		}
 	}
 
-	log := ecslogs.NewLogger(cfg)
+	buf := &bytes.Buffer{}
+	buf.Grow(1024)
 
-	if err = log.Log(makeEvent(entry, source)); err == nil {
+	if err = ecslogs.NewLogger(buf).Log(makeEvent(entry, source)); err == nil {
 		b = buf.Bytes()
 	}
 

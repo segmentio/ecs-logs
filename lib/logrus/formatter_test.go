@@ -15,7 +15,7 @@ func TestFormatter(t *testing.T) {
 	log := &logrus.Logger{
 		Out:   buf,
 		Level: logrus.DebugLevel,
-		Formatter: NewFormatterWith(ecslogs.LoggerConfig{
+		Formatter: NewFormatterWith(Config{
 			FuncInfo: testFuncInfo,
 		}),
 	}
