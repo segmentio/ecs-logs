@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs/lib"
 
 	_ "github.com/segmentio/ecs-logs/lib/cloudwatchlogs"
@@ -21,17 +22,17 @@ import (
 )
 
 type source struct {
-	ecslogs.Source
+	lib.Source
 	name string
 }
 
 type destination struct {
-	ecslogs.Destination
+	lib.Destination
 	name string
 }
 
 type reader struct {
-	ecslogs.Reader
+	lib.Reader
 	name string
 }
 
@@ -44,18 +45,18 @@ func main() {
 	var flushTimeout time.Duration
 	var cacheTimeout time.Duration
 
-	flag.StringVar(&src, "src", "stdin", "A comma separated list of log sources from which messages will be read ["+strings.Join(ecslogs.SourcesAvailable(), ", ")+"]")
-	flag.StringVar(&dst, "dst", "stdout", "A comma separated list of log destinations to which messages will be written ["+strings.Join(ecslogs.DestinationsAvailable(), ", ")+"]")
+	flag.StringVar(&src, "src", "stdin", "A comma separated list of log sources from which messages will be read ["+strings.Join(lib.SourcesAvailable(), ", ")+"]")
+	flag.StringVar(&dst, "dst", "stdout", "A comma separated list of log destinations to which messages will be written ["+strings.Join(lib.DestinationsAvailable(), ", ")+"]")
 	flag.IntVar(&maxBytes, "max-batch-bytes", 1000000, "The maximum size in bytes of a message batch")
 	flag.IntVar(&maxCount, "max-batch-size", 10000, "The maximum number of messages in a batch")
 	flag.DurationVar(&flushTimeout, "flush-timeout", 5*time.Second, "How often messages will be flushed")
 	flag.DurationVar(&cacheTimeout, "cache-timeout", 5*time.Minute, "How to wait before clearing unused internal cache")
 	flag.Parse()
 
-	var store = ecslogs.NewStore()
+	var store = lib.NewStore()
 	var sources []source
-	var dests []destination
 	var readers []reader
+	var dests []destination
 
 	if sources = getSources(strings.Split(src, ",")); len(sources) == 0 {
 		fatalf("no or invalid log sources")
@@ -71,14 +72,14 @@ func main() {
 
 	join := &sync.WaitGroup{}
 
-	limits := ecslogs.StreamLimits{
+	limits := lib.StreamLimits{
 		MaxCount: maxCount,
 		MaxBytes: maxBytes,
 		MaxTime:  flushTimeout,
 	}
 
 	expchan := time.Tick(flushTimeout / 2)
-	msgchan := make(chan ecslogs.Message, len(readers))
+	msgchan := make(chan lib.Message, len(readers))
 	sigchan := make(chan os.Signal, 1)
 	counter := int32(len(readers))
 	startReaders(readers, msgchan, &counter)
@@ -113,7 +114,7 @@ func main() {
 }
 
 func getSources(names []string) (sources []source) {
-	for i, src := range ecslogs.GetSources(names...) {
+	for i, src := range lib.GetSources(names...) {
 		sources = append(sources, source{
 			Source: src,
 			name:   names[i],
@@ -123,7 +124,7 @@ func getSources(names []string) (sources []source) {
 }
 
 func getDestinations(names []string) (destinations []destination) {
-	for i, dst := range ecslogs.GetDestinations(names...) {
+	for i, dst := range lib.GetDestinations(names...) {
 		destinations = append(destinations, destination{
 			Destination: dst,
 			name:        names[i],
@@ -153,7 +154,7 @@ func openSources(sources []source) (readers []reader, err error) {
 	return
 }
 
-func startReaders(readers []reader, msgchan chan<- ecslogs.Message, counter *int32) {
+func startReaders(readers []reader, msgchan chan<- lib.Message, counter *int32) {
 	hostname, _ := os.Hostname()
 
 	for _, reader := range readers {
@@ -167,16 +168,16 @@ func stopReaders(readers []reader) {
 	}
 }
 
-func term(c chan<- ecslogs.Message, counter *int32) {
+func term(c chan<- lib.Message, counter *int32) {
 	if atomic.AddInt32(counter, -1) == 0 {
 		close(c)
 	}
 }
 
-func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
+func read(r reader, c chan<- lib.Message, counter *int32, hostname string) {
 	defer term(c, counter)
 	for {
-		var msg ecslogs.Message
+		var msg lib.Message
 		var err error
 
 		if msg, err = r.ReadMessage(); err != nil {
@@ -215,10 +216,10 @@ func read(r reader, c chan<- ecslogs.Message, counter *int32, hostname string) {
 	}
 }
 
-func write(dest destination, group string, stream string, batch []ecslogs.Message, join *sync.WaitGroup) {
+func write(dest destination, group string, stream string, batch []lib.Message, join *sync.WaitGroup) {
 	defer join.Done()
 
-	var writer ecslogs.Writer
+	var writer lib.Writer
 	var err error
 
 	if writer, err = dest.Open(group, stream); err != nil {
@@ -233,7 +234,7 @@ func write(dest destination, group string, stream string, batch []ecslogs.Messag
 	}
 }
 
-func flush(dests []destination, group *ecslogs.Group, stream *ecslogs.Stream, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
+func flush(dests []destination, group *lib.Group, stream *lib.Stream, limits lib.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	for {
 		batch, reason := stream.Flush(limits, now)
 
@@ -260,15 +261,15 @@ func flush(dests []destination, group *ecslogs.Group, stream *ecslogs.Stream, li
 	}
 }
 
-func flushAll(dests []destination, store *ecslogs.Store, limits ecslogs.StreamLimits, now time.Time, join *sync.WaitGroup) {
-	store.ForEach(func(group *ecslogs.Group) {
-		group.ForEach(func(stream *ecslogs.Stream) {
+func flushAll(dests []destination, store *lib.Store, limits lib.StreamLimits, now time.Time, join *sync.WaitGroup) {
+	store.ForEach(func(group *lib.Group) {
+		group.ForEach(func(stream *lib.Stream) {
 			flush(dests, group, stream, limits, now, join)
 		})
 	})
 }
 
-func removeExpired(dests []destination, store *ecslogs.Store, cacheTimeout time.Duration, now time.Time) {
+func removeExpired(dests []destination, store *lib.Store, cacheTimeout time.Duration, now time.Time) {
 	for _, stream := range store.RemoveExpired(cacheTimeout, now) {
 		for _, dest := range dests {
 			logf("removed expired stream %s::%s (%s)", stream.Group(), stream.Name(), dest.name)
@@ -290,7 +291,7 @@ func logf(format string, args ...interface{}) {
 	fmt.Printf(format+"\n", args...)
 }
 
-func errorBatch(dest string, group string, stream string, err error, batch []ecslogs.Message) {
+func errorBatch(dest string, group string, stream string, err error, batch []lib.Message) {
 	errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest, err)
 	for _, msg := range batch {
 		errorf("- %s", msg.Event)

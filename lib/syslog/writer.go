@@ -30,7 +30,7 @@ type WriterConfig struct {
 	TLS        *tls.Config
 }
 
-func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
+func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	var c WriterConfig
 	var s string
 	var u *url.URL
@@ -51,7 +51,7 @@ func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
 	return DialWriter(c)
 }
 
-func DialWriter(config WriterConfig) (w ecslogs.Writer, err error) {
+func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 	var netopts []string
 	var addropts []string
 	var backend io.Writer
@@ -160,7 +160,7 @@ func (w *writer) Close() (err error) {
 	return
 }
 
-func (w *writer) WriteMessageBatch(batch ecslogs.MessageBatch) (err error) {
+func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
 	for _, msg := range batch {
 		if err = w.write(msg); err != nil {
 			return
@@ -169,14 +169,14 @@ func (w *writer) WriteMessageBatch(batch ecslogs.MessageBatch) (err error) {
 	return w.flush()
 }
 
-func (w *writer) WriteMessage(msg ecslogs.Message) (err error) {
+func (w *writer) WriteMessage(msg lib.Message) (err error) {
 	if err = w.write(msg); err == nil {
 		err = w.flush()
 	}
 	return
 }
 
-func (w *writer) write(msg ecslogs.Message) (err error) {
+func (w *writer) write(msg lib.Message) (err error) {
 	m := message{
 		PRIVAL:    int(msg.Event.Level-1) + 8, // +8 is for user-level messages facility
 		HOSTNAME:  msg.Event.Info.Host,

@@ -4,30 +4,31 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs/lib"
 )
 
 func TestExtractMetrics(t *testing.T) {
-	batch := ecslogs.MessageBatch{
-		ecslogs.Message{
+	batch := lib.MessageBatch{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.INFO},
 		},
-		ecslogs.Message{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.INFO},
 		},
-		ecslogs.Message{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.WARN},
 		},
-		ecslogs.Message{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.INFO},
 		},
-		ecslogs.Message{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.INFO},
 		},
-		ecslogs.Message{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.ERROR},
 		},
-		ecslogs.Message{
+		lib.Message{
 			Event: ecslogs.Event{Level: ecslogs.WARN},
 		},
 	}

@@ -24,7 +24,7 @@ func newClient() *client {
 	}
 }
 
-func (c *client) Open(group string, stream string) (w ecslogs.Writer, err error) {
+func (c *client) Open(group string, stream string) (w lib.Writer, err error) {
 	var client *cloudwatchlogs.CloudWatchLogs
 	var token string
 	var writer = c.get(group, stream)

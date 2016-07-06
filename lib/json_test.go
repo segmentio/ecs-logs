@@ -1,10 +1,12 @@
-package ecslogs
+package lib
 
 import (
 	"encoding/json"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/segmentio/ecs-logs-go"
 )
 
 var (
@@ -70,11 +72,11 @@ var (
 			},
 		},
 
-		Event{
-			Level:   DEBUG,
+		ecslogs.Event{
+			Level:   ecslogs.DEBUG,
 			Time:    time.Now(),
-			Info:    EventInfo{Host: "localhost"},
-			Data:    EventData{"hello": "world"},
+			Info:    ecslogs.EventInfo{Host: "localhost"},
+			Data:    ecslogs.EventData{"hello": "world"},
 			Message: "Hello World!",
 		},
 	}

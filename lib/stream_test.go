@@ -1,9 +1,11 @@
-package ecslogs
+package lib
 
 import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/segmentio/ecs-logs-go"
 )
 
 func TestSplitMessageListHead(t *testing.T) {
@@ -87,7 +89,7 @@ func TestStreamNotExpiredDueToMessages(t *testing.T) {
 	st.Add(Message{
 		Group:  "A",
 		Stream: "0123456789",
-		Event: Event{
+		Event: ecslogs.Event{
 			Time:    ts,
 			Message: "Hello World!",
 		},
@@ -113,7 +115,7 @@ func TestStreamBytes(t *testing.T) {
 	m1 := Message{
 		Group:  "A",
 		Stream: "0123456789",
-		Event: Event{
+		Event: ecslogs.Event{
 			Time:    ts,
 			Message: "Hello World!",
 		},
@@ -121,7 +123,7 @@ func TestStreamBytes(t *testing.T) {
 	m2 := Message{
 		Group:  "A",
 		Stream: "0123456789",
-		Event: Event{
+		Event: ecslogs.Event{
 			Time:    ts,
 			Message: "How are you?",
 		},
@@ -129,7 +131,7 @@ func TestStreamBytes(t *testing.T) {
 	m3 := Message{
 		Group:  "A",
 		Stream: "0123456789",
-		Event: Event{
+		Event: ecslogs.Event{
 			Time:    ts,
 			Message: "Well",
 		},

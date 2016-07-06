@@ -10,7 +10,7 @@ import (
 	"github.com/statsd/datadog"
 )
 
-func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
+func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	var c statsd.WriterConfig
 	var s string
 	var u *url.URL

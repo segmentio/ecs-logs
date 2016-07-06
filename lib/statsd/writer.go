@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs/lib"
 	"github.com/statsd/client"
 )
@@ -26,7 +27,7 @@ type WriterConfig struct {
 	Dial    func(addr string, group string, stream string) (Client, error)
 }
 
-func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
+func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	var c WriterConfig
 	var s string
 	var u *url.URL
@@ -51,7 +52,7 @@ func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
 	return DialWriter(c)
 }
 
-func DialWriter(config WriterConfig) (w ecslogs.Writer, err error) {
+func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 	var client Client
 
 	if len(config.Address) == 0 {
@@ -92,15 +93,15 @@ func (w writer) Close() error {
 	return w.client.Close()
 }
 
-func (w writer) WriteMessage(msg ecslogs.Message) error {
-	return w.WriteMessageBatch(ecslogs.MessageBatch{msg})
+func (w writer) WriteMessage(msg lib.Message) error {
+	return w.WriteMessageBatch(lib.MessageBatch{msg})
 }
 
-func (w writer) WriteMessageBatch(batch ecslogs.MessageBatch) error {
+func (w writer) WriteMessageBatch(batch lib.MessageBatch) error {
 	return sendMetrics(w.client, extractMetrics(batch))
 }
 
-func extractMetrics(batch ecslogs.MessageBatch) map[ecslogs.Level]*metric {
+func extractMetrics(batch lib.MessageBatch) map[ecslogs.Level]*metric {
 	metrics := make(map[ecslogs.Level]*metric, 10)
 
 	for _, msg := range batch {
@@ -120,11 +121,11 @@ func extractMetrics(batch ecslogs.MessageBatch) map[ecslogs.Level]*metric {
 func sendMetrics(client Client, metrics map[ecslogs.Level]*metric) (err error) {
 	for _, m := range metrics {
 		if e := client.IncrBy(m.name, m.value); e != nil {
-			err = ecslogs.AppendError(err, e)
+			err = lib.AppendError(err, e)
 		}
 	}
 	if e := client.Flush(); e != nil {
-		err = ecslogs.AppendError(err, e)
+		err = lib.AppendError(err, e)
 	}
 	return
 }

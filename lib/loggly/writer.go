@@ -11,7 +11,7 @@ import (
 	"github.com/segmentio/ecs-logs/lib/syslog"
 )
 
-func NewWriter(group string, stream string) (w ecslogs.Writer, err error) {
+func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	var endpoint string
 	var protocol string
 	var address string

@@ -22,11 +22,11 @@ func (w *writer) Close() error {
 	return nil
 }
 
-func (w *writer) WriteMessage(msg ecslogs.Message) error {
-	return w.WriteMessageBatch(ecslogs.MessageBatch{msg})
+func (w *writer) WriteMessage(msg lib.Message) error {
+	return w.WriteMessageBatch(lib.MessageBatch{msg})
 }
 
-func (w *writer) WriteMessageBatch(batch ecslogs.MessageBatch) (err error) {
+func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
 	if len(batch) == 0 {
 		return
 	}
