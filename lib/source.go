@@ -70,7 +70,7 @@ var (
 			// returns.
 			//
 			// To work around this limitation we start a goroutine that is
-			// responsible for reading from stdin and send the bytes through
+			// responsible for reading from stdin and sending the bytes through
 			// an in-memory pipe. When the pipe is closed it properly cancels
 			// all pending reads which is the behavior we expect.
 			//
