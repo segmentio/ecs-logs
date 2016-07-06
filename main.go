@@ -53,8 +53,6 @@ func main() {
 	var cacheTimeout time.Duration
 
 	hostname, _ = os.Hostname()
-	log.SetLevel(log.DebugLevel)
-	log.SetHandler(cli.New(os.Stderr))
 
 	flag.StringVar(&src, "src", "stdin", "A comma separated list of log sources from which messages will be read ["+strings.Join(lib.SourcesAvailable(), ", ")+"]")
 	flag.StringVar(&dst, "dst", "stdout", "A comma separated list of log destinations to which messages will be written ["+strings.Join(lib.DestinationsAvailable(), ", ")+"]")
@@ -65,6 +63,15 @@ func main() {
 	flag.DurationVar(&flushTimeout, "flush-timeout", 5*time.Second, "How often messages will be flushed")
 	flag.DurationVar(&cacheTimeout, "cache-timeout", 5*time.Minute, "How to wait before clearing unused internal cache")
 	flag.Parse()
+
+	logger := &lib.LogHandler{
+		Group:    "ecs-logs",
+		Stream:   hostname,
+		Hostname: hostname,
+		Queue:    lib.NewMessageQueue(),
+	}
+	log.SetLevel(log.Level(level))
+	log.SetHandler(multi.New(cli.New(os.Stderr), logger))
 
 	var store = lib.NewStore()
 	var sources []source
@@ -95,21 +102,20 @@ func main() {
 		MaxTime:  flushTimeout,
 	}
 
-	logger := &lib.LogHandler{
-		Group:    "ecs-logs",
-		Stream:   hostname,
-		Hostname: hostname,
-		Queue:    lib.NewMessageQueue(),
-	}
-	log.SetLevel(log.Level(level))
-	log.SetHandler(multi.New(cli.New(os.Stderr), logger))
-
 	expchan := time.Tick(flushTimeout / 2)
 	msgchan := make(chan lib.Message, len(readers))
 	sigchan := make(chan os.Signal, 1)
 	counter := int32(len(readers))
 	startReaders(readers, msgchan, &counter, hostname)
 	setupSignals(sigchan)
+
+	for _, s := range sources {
+		log.WithField("source", s.name).Info("source enabled")
+	}
+
+	for _, d := range dests {
+		log.WithField("destination", d.name).Info("destination enabled")
+	}
 
 	for {
 		select {
@@ -150,8 +156,20 @@ func getSources(names []string) (sources []source) {
 			Source: src,
 			name:   names[i],
 		})
-		log.WithField("source", names[i]).Info("source enabled")
 	}
+
+	if len(sources) != len(names) {
+	search:
+		for _, name := range names {
+			for _, source := range sources {
+				if name == source.name {
+					continue search
+				}
+			}
+			log.WithFields(log.Fields{"source": name}).Warn("source disabled")
+		}
+	}
+
 	return
 }
 
@@ -161,8 +179,20 @@ func getDestinations(names []string) (destinations []destination) {
 			Destination: dst,
 			name:        names[i],
 		})
-		log.WithField("destination", names[i]).Info("destination enabled")
 	}
+
+	if len(destinations) != len(names) {
+	search:
+		for _, name := range names {
+			for _, destination := range destinations {
+				if name == destination.name {
+					continue search
+				}
+			}
+			log.WithFields(log.Fields{"destination": name}).Warn("destination disabled")
+		}
+	}
+
 	return
 }
 
