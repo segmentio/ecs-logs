@@ -29,7 +29,7 @@ func NewHandlerWith(c Config) apex.Handler {
 	return apex.HandlerFunc(func(entry *apex.Entry) error {
 		var source string
 
-		if pc, ok := ecslogs.GuessCaller(c.Depth, 10, "github.com/segmentio/ecs-logs"); ok {
+		if pc, ok := ecslogs.GuessCaller(c.Depth, 10, "github.com/segmentio/ecs-logs", "github.com/apex/log"); ok {
 			if info, ok := c.FuncInfo(pc); ok {
 				source = info.String()
 			}
