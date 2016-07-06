@@ -150,6 +150,7 @@ func getSources(names []string) (sources []source) {
 			Source: src,
 			name:   names[i],
 		})
+		log.WithField("source", names[i]).Info("source enabled")
 	}
 	return
 }
@@ -160,6 +161,7 @@ func getDestinations(names []string) (destinations []destination) {
 			Destination: dst,
 			name:        names[i],
 		})
+		log.WithField("destination", names[i]).Info("destination enabled")
 	}
 	return
 }
