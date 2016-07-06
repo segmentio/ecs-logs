@@ -248,7 +248,7 @@ func read(r reader, c chan<- lib.Message, counter *int32, hostname string) {
 	}
 }
 
-func write(dest destination, group string, stream string, batch []lib.Message, join *sync.WaitGroup) {
+func write(dest destination, group string, stream string, batch lib.MessageBatch, join *sync.WaitGroup) {
 	defer join.Done()
 
 	var writer lib.Writer
@@ -335,7 +335,7 @@ func removeExpired(dests []destination, store *lib.Store, cacheTimeout time.Dura
 	}
 }
 
-func logDropBatch(dest string, group string, stream string, err error, batch []lib.Message) {
+func logDropBatch(dest string, group string, stream string, err error, batch lib.MessageBatch) {
 	log.WithFields(log.Fields{
 		"group":       group,
 		"stream":      stream,
