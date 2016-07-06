@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"io"
 	"os"
 	"sort"
 	"sync"
@@ -64,7 +65,25 @@ var (
 	srcmtx sync.RWMutex
 	srcmap = map[string]Source{
 		"stdin": SourceFunc(func() (Reader, error) {
-			return NewMessageDecoder(os.Stdin), nil
+			// On some platforms closing stdin doesn't cause pending read
+			// operations to abort, resulting in a blocking call that never
+			// returns.
+			//
+			// To work around this limitation we start a goroutine that is
+			// responsible for reading from stdin and sending the bytes through
+			// an in-memory pipe. When the pipe is closed it properly cancels
+			// all pending reads which is the behavior we expect.
+			//
+			// There probably is a small performance cost to adding this extra
+			// step but the stdin source shouldn't be used in production
+			// environments so it shouldn't be a problem in practice.
+			//
+			// Note that the goroutine reading from stdin is likely gonna be
+			// leaked... This is OK in the ecs-logs use case because only one
+			// stdin reader will be instantiated.
+			r, w := io.Pipe()
+			go io.Copy(w, os.Stdin)
+			return NewMessageDecoder(r), nil
 		}),
 	}
 )
