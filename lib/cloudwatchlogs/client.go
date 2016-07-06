@@ -146,7 +146,6 @@ func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, s
 	}
 
 	if len(result.LogStreams) == 0 {
-		err = errDescribeLogStream
 		return
 	}
 
