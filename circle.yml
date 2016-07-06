@@ -2,7 +2,6 @@ machine:
   environment:
     BASE_DIR: ${GOPATH%%:*}/src/github.com/${CIRCLE_PROJECT_USERNAME}
     REPO_DIR: ${BASE_DIR}/${CIRCLE_PROJECT_REPONAME}
-    GOMAXPROCS: 1
     GO15VENDOREXPERIMENT: 1
   services:
     - docker
