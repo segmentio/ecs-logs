@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/sdjournal"
+	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs/lib"
 )
 
-func NewReader() (r ecslogs.Reader, err error) {
+func NewReader() (r lib.Reader, err error) {
 	var j *sdjournal.Journal
 
 	if j, err = sdjournal.NewJournal(); err != nil {
@@ -33,7 +34,7 @@ type reader struct {
 	*sdjournal.Journal
 }
 
-func (r reader) ReadMessage() (msg ecslogs.Message, err error) {
+func (r reader) ReadMessage() (msg lib.Message, err error) {
 	for {
 		var cur int
 		var ok bool
@@ -53,7 +54,7 @@ func (r reader) ReadMessage() (msg ecslogs.Message, err error) {
 	}
 }
 
-func (r reader) getMessage() (msg ecslogs.Message, ok bool, err error) {
+func (r reader) getMessage() (msg lib.Message, ok bool, err error) {
 	if msg.Group, err = r.GetDataValue("CONTAINER_TAG"); len(msg.Group) == 0 {
 		// No CONTAINER_TAG, this must be a journal message from a process that
 		// isn't running in a docker container.
@@ -135,7 +136,7 @@ func (r reader) getPriority() (p ecslogs.Level) {
 	if v, e := strconv.Atoi(r.getString("PRIORITY")); e != nil {
 		p = ecslogs.INFO
 	} else {
-		p = ecslogs.Level(v + 1)
+		p = ecslogs.MakeLevel(v)
 	}
 	return
 }
