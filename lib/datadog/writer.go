@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/segmentio/ecs-logs/lib"
 	"github.com/segmentio/ecs-logs/lib/statsd"
@@ -45,7 +44,7 @@ func dialUdpClient(addr string, group string, stream string) (statsd.Client, err
 	if dd, err := datadog.Dial(addr); err != nil {
 		return nil, err
 	} else {
-		dd.SetPrefix("ecs_logs." + strings.Replace(group, "-", "_", -1) + ".")
+		dd.SetPrefix("ecs-logs." + group + ".")
 		dd.SetTags("group:"+group, "stream:"+stream)
 		return client{dd}, nil
 	}
