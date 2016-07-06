@@ -69,6 +69,10 @@ func main() {
 	var readers []reader
 	var dests []destination
 
+	if len(hostname) == 0 {
+		log.Fatal("no hostname configured")
+	}
+
 	if sources = getSources(strings.Split(src, ",")); len(sources) == 0 {
 		log.Fatal("no or invalid log sources")
 	}
