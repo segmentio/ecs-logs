@@ -1,4 +1,4 @@
-package ecslogs
+package lib
 
 import (
 	"encoding"

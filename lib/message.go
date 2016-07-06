@@ -1,11 +1,15 @@
-package ecslogs
+package lib
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/segmentio/ecs-logs-go"
+)
 
 type Message struct {
-	Group  string `json:"group,omitempty"`
-	Stream string `json:"stream,omitempty"`
-	Event  Event  `json:"event,omitempty"`
+	Group  string        `json:"group,omitempty"`
+	Stream string        `json:"stream,omitempty"`
+	Event  ecslogs.Event `json:"event,omitempty"`
 }
 
 func (m Message) Bytes() []byte {

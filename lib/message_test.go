@@ -1,4 +1,4 @@
-package ecslogs
+package lib
 
 import (
 	"errors"
@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/segmentio/ecs-logs-go"
 )
 
 func TestMessageString(t *testing.T) {
@@ -14,12 +16,12 @@ func TestMessageString(t *testing.T) {
 	m := Message{
 		Group:  "abc",
 		Stream: "0123456789",
-		Event: Event{
-			Level:   INFO,
+		Event: ecslogs.Event{
+			Level:   ecslogs.INFO,
 			Time:    d,
 			Message: "Hello World!",
-			Info:    EventInfo{Host: "localhost"},
-			Data:    EventData{},
+			Info:    ecslogs.EventInfo{Host: "localhost"},
+			Data:    ecslogs.EventData{},
 		},
 	}
 
@@ -38,8 +40,8 @@ func TestMessageEncoderDecoder(t *testing.T) {
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
-			Event: Event{
-				Level:   INFO,
+			Event: ecslogs.Event{
+				Level:   ecslogs.INFO,
 				Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
 				Message: "Hello World!",
 			},
@@ -47,8 +49,8 @@ func TestMessageEncoderDecoder(t *testing.T) {
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
-			Event: Event{
-				Level:   INFO,
+			Event: ecslogs.Event{
+				Level:   ecslogs.INFO,
 				Time:    time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC),
 				Message: "How are you doing?",
 			},
@@ -98,8 +100,8 @@ func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
-			Event: Event{
-				Level:   INFO,
+			Event: ecslogs.Event{
+				Level:   ecslogs.INFO,
 				Time:    time.Date(2016, 6, 13, 12, 23, 42, 123456789, time.UTC),
 				Message: "Hello World!",
 			},
@@ -107,8 +109,8 @@ func TestMessageEncoderWriteMessageBatchError(t *testing.T) {
 		Message{
 			Group:  "abc",
 			Stream: "0123456789",
-			Event: Event{
-				Level:   INFO,
+			Event: ecslogs.Event{
+				Level:   ecslogs.INFO,
 				Time:    time.Date(2016, 6, 13, 12, 24, 42, 123456789, time.UTC),
 				Message: "How are you doing?",
 			},

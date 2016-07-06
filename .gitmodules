@@ -13,3 +13,6 @@
 [submodule "vendor/github.com/visionmedia/go-debug"]
 	path = vendor/github.com/visionmedia/go-debug
 	url = https://github.com/visionmedia/go-debug
+[submodule "vendor/github.com/segmentio/ecs-logs-go"]
+	path = vendor/github.com/segmentio/ecs-logs-go
+	url = https://github.com/segmentio/ecs-logs-go
