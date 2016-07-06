@@ -11,6 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/multi"
 	"github.com/segmentio/ecs-logs-go"
 	"github.com/segmentio/ecs-logs/lib"
 
@@ -40,13 +43,21 @@ func main() {
 	var err error
 	var src string
 	var dst string
+	var hostname string
+	var level = lib.LogLevel(log.InfoLevel)
 	var maxBytes int
 	var maxCount int
 	var flushTimeout time.Duration
 	var cacheTimeout time.Duration
 
+	hostname, _ = os.Hostname()
+	log.SetLevel(log.DebugLevel)
+	log.SetHandler(cli.New(os.Stdout))
+
 	flag.StringVar(&src, "src", "stdin", "A comma separated list of log sources from which messages will be read ["+strings.Join(lib.SourcesAvailable(), ", ")+"]")
 	flag.StringVar(&dst, "dst", "stdout", "A comma separated list of log destinations to which messages will be written ["+strings.Join(lib.DestinationsAvailable(), ", ")+"]")
+	flag.StringVar(&hostname, "hostname", hostname, "The hostname advertised by ecs-logs")
+	flag.Var(&level, "log-level", "The minimum level of log messages shown by ecs-logs")
 	flag.IntVar(&maxBytes, "max-batch-bytes", 1000000, "The maximum size in bytes of a message batch")
 	flag.IntVar(&maxCount, "max-batch-size", 10000, "The maximum number of messages in a batch")
 	flag.DurationVar(&flushTimeout, "flush-timeout", 5*time.Second, "How often messages will be flushed")
@@ -59,15 +70,15 @@ func main() {
 	var dests []destination
 
 	if sources = getSources(strings.Split(src, ",")); len(sources) == 0 {
-		fatalf("no or invalid log sources")
+		log.Fatal("no or invalid log sources")
 	}
 
 	if dests = getDestinations(strings.Split(dst, ",")); len(dests) == 0 {
-		fatalf("no or invalid log destinations")
+		log.Fatal("no or invalid log destinations")
 	}
 
 	if readers, err = openSources(sources); err != nil {
-		fatalf("failed to open sources (%s)", err)
+		log.WithError(err).Fatal("failed to open log sources readers")
 	}
 
 	join := &sync.WaitGroup{}
@@ -78,11 +89,20 @@ func main() {
 		MaxTime:  flushTimeout,
 	}
 
+	logger := &lib.LogHandler{
+		Group:    "ecs-logs",
+		Stream:   hostname,
+		Hostname: hostname,
+		Queue:    lib.NewMessageQueue(),
+	}
+	log.SetLevel(log.Level(level))
+	log.SetHandler(multi.New(cli.New(os.Stdout), logger))
+
 	expchan := time.Tick(flushTimeout / 2)
 	msgchan := make(chan lib.Message, len(readers))
 	sigchan := make(chan os.Signal, 1)
 	counter := int32(len(readers))
-	startReaders(readers, msgchan, &counter)
+	startReaders(readers, msgchan, &counter, hostname)
 
 	for {
 		select {
@@ -90,24 +110,28 @@ func main() {
 			now := time.Now()
 
 			if !ok {
-				logf("reached EOF, waiting for all write operations to complete...")
+				log.Info("waiting for all write operations to complete")
 				limits.Force = true
 				flushAll(dests, store, limits, now, join)
+				flushQueue(dests, store, logger.Queue, limits, now, join)
 				join.Wait()
-				logf("done")
 				return
 			}
 
-			group, stream := store.Add(msg, now)
-			flush(dests, group, stream, limits, now, join)
+			_, stream := store.Add(msg, now)
+			flush(dests, stream, limits, now, join)
+
+		case <-logger.Queue.C:
+			now := time.Now()
+			flushQueue(dests, store, logger.Queue, limits, now, join)
 
 		case <-expchan:
 			now := time.Now()
 			flushAll(dests, store, limits, now, join)
 			removeExpired(dests, store, cacheTimeout, now)
 
-		case <-sigchan:
-			logf("got interrupt signal, closing message reader...")
+		case sig := <-sigchan:
+			log.WithFields(log.Fields{"signal": sig.String()}).Info("closing message readers")
 			stopReaders(readers)
 		}
 	}
@@ -138,7 +162,10 @@ func openSources(sources []source) (readers []reader, err error) {
 
 	for _, source := range sources {
 		if r, e := source.Open(); e != nil {
-			errorf("failed to open log source (%s: %s)", source.name, e)
+			log.WithFields(log.Fields{
+				"source": source.name,
+				"error":  e,
+			}).Error("failed to open log source")
 		} else {
 			readers = append(readers, reader{
 				Reader: r,
@@ -154,9 +181,7 @@ func openSources(sources []source) (readers []reader, err error) {
 	return
 }
 
-func startReaders(readers []reader, msgchan chan<- lib.Message, counter *int32) {
-	hostname, _ := os.Hostname()
-
+func startReaders(readers []reader, msgchan chan<- lib.Message, counter *int32, hostname string) {
 	for _, reader := range readers {
 		go read(reader, msgchan, counter, hostname)
 	}
@@ -184,19 +209,26 @@ func read(r reader, c chan<- lib.Message, counter *int32, hostname string) {
 			if err == io.EOF {
 				break
 			}
-			errorf("the message reader failed (%s: %s)", r.name, err)
+			log.WithFields(log.Fields{
+				"reader": r.name,
+				"error":  err,
+			}).Error("the message reader failed")
 			continue
 		}
 
 		if len(msg.Group) == 0 {
-			errorf("dropping %s message because the group property wasn't set", r.name)
-			errorf("- %s", msg.Event)
+			log.WithFields(log.Fields{
+				"reader":  r.name,
+				"missing": "group",
+			}).Warn("dropping message because the a required field wasn't set")
 			continue
 		}
 
 		if len(msg.Stream) == 0 {
-			errorf("dropping %s message because the stream property wasn't set (%s)", r.name, msg.Group)
-			errorf("- %s", msg.Event)
+			log.WithFields(log.Fields{
+				"reader":  r.name,
+				"missing": "stream",
+			}).Warn("dropping message because the a required field wasn't set")
 			continue
 		}
 
@@ -223,18 +255,18 @@ func write(dest destination, group string, stream string, batch []lib.Message, j
 	var err error
 
 	if writer, err = dest.Open(group, stream); err != nil {
-		errorBatch(dest.name, group, stream, err, batch)
+		logDropBatch(dest.name, group, stream, err, batch)
 		return
 	}
 	defer writer.Close()
 
 	if err = writer.WriteMessageBatch(batch); err != nil {
-		errorBatch(dest.name, group, stream, err, batch)
+		logDropBatch(dest.name, group, stream, err, batch)
 		return
 	}
 }
 
-func flush(dests []destination, group *lib.Group, stream *lib.Stream, limits lib.StreamLimits, now time.Time, join *sync.WaitGroup) {
+func flush(dests []destination, stream *lib.Stream, limits lib.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	for {
 		batch, reason := stream.Flush(limits, now)
 
@@ -252,11 +284,16 @@ func flush(dests []destination, group *lib.Group, stream *lib.Stream, limits lib
 			sort.Stable(batch)
 		}
 
-		logf("flushing %d messages to %s::%s (%s)", len(batch), group.Name(), stream.Name(), reason)
+		log.WithFields(log.Fields{
+			"group":  stream.Group(),
+			"stream": stream.Name(),
+			"count":  len(batch),
+			"reason": reason,
+		}).Info("flushing message batch")
 
 		for _, dest := range dests {
 			join.Add(1)
-			go write(dest, group.Name(), stream.Name(), batch, join)
+			go write(dest, stream.Group(), stream.Name(), batch, join)
 		}
 	}
 }
@@ -264,36 +301,54 @@ func flush(dests []destination, group *lib.Group, stream *lib.Stream, limits lib
 func flushAll(dests []destination, store *lib.Store, limits lib.StreamLimits, now time.Time, join *sync.WaitGroup) {
 	store.ForEach(func(group *lib.Group) {
 		group.ForEach(func(stream *lib.Stream) {
-			flush(dests, group, stream, limits, now, join)
+			flush(dests, stream, limits, now, join)
 		})
 	})
+}
+
+func flushQueue(dests []destination, store *lib.Store, queue *lib.MessageQueue, limits lib.StreamLimits, now time.Time, join *sync.WaitGroup) {
+	streams := make(map[string]*lib.Stream)
+
+	for _, msg := range queue.Flush() {
+		_, stream := store.Add(msg, now)
+		key := stream.Group() + ":" + stream.Name()
+
+		if streams[key] == nil {
+			streams[key] = stream
+		}
+	}
+
+	for _, stream := range streams {
+		flush(dests, stream, limits, now, join)
+	}
 }
 
 func removeExpired(dests []destination, store *lib.Store, cacheTimeout time.Duration, now time.Time) {
 	for _, stream := range store.RemoveExpired(cacheTimeout, now) {
 		for _, dest := range dests {
-			logf("removed expired stream %s::%s (%s)", stream.Group(), stream.Name(), dest.name)
 			dest.Close(stream.Group(), stream.Name())
 		}
+		log.WithFields(log.Fields{
+			"group":  stream.Group(),
+			"stream": stream.Name(),
+		}).Info("removed expired stream")
 	}
 }
 
-func fatalf(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
-}
+func logDropBatch(dest string, group string, stream string, err error, batch []lib.Message) {
+	log.WithFields(log.Fields{
+		"group":       group,
+		"stream":      stream,
+		"destination": dest,
+		"error":       err,
+		"count":       len(batch),
+	}).Error("dropping message batch")
 
-func errorf(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-}
-
-func logf(format string, args ...interface{}) {
-	fmt.Printf(format+"\n", args...)
-}
-
-func errorBatch(dest string, group string, stream string, err error, batch []lib.Message) {
-	errorf("dropping message batch of %d messages to %s::%s (%s: %s)", len(batch), group, stream, dest, err)
 	for _, msg := range batch {
-		errorf("- %s", msg.Event)
+		log.WithFields(log.Fields{
+			"group":  msg.Group,
+			"stream": msg.Stream,
+			"event":  msg.Event,
+		}).Debug("dropped")
 	}
 }
