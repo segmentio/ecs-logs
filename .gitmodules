@@ -16,3 +16,6 @@
 [submodule "vendor/github.com/segmentio/ecs-logs-go"]
 	path = vendor/github.com/segmentio/ecs-logs-go
 	url = https://github.com/segmentio/ecs-logs-go
+[submodule "vendor/github.com/apex/log"]
+	path = vendor/github.com/apex/log
+	url = https://github.com/apex/log
