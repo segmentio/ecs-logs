@@ -37,7 +37,7 @@ deployment:
         docker.pass=${DOCKER_PASS}
         docker.image=${IMG}
         docker.version=master
-        docker.tags="${CIRCLE_BUILD_NUM} ${CIRCLE_SHA1}"
+        docker.tags="circle-${CIRCLE_BUILD_NUM} ${CIRCLE_SHA1}"
         ; fi
   release:
     tag: /[0-9]+(\.[0-9]+)*/
@@ -49,5 +49,5 @@ deployment:
         docker.pass=${DOCKER_PASS}
         docker.image=${IMG}
         docker.version=latest
-        docker.tags="${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}"
+        docker.tags="circle-${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}"
         ; fi
