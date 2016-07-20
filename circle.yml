@@ -30,8 +30,22 @@ deployment:
   master:
     branch: master
     commands:
-      - if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish image=${IMG} version=master; fi
+      - >
+        if [ -e Dockerfile ]; then
+        ${DOCKER}
+        -e DOCKER_EMAIL=${DOCKER_EMAIL}
+        -e DOCKER_USER=${DOCKER_USER}
+        -e DOCKER_PASS=${DOCKER_PASS}
+        segment/golang:latest docker.publish image=${IMG} version=master;
+        fi
   release:
     tag: /[0-9]+(\.[0-9]+)*/
     commands:
-      - if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish image=${IMG} version=latest; fi
+      - >
+        if [ -e Dockerfile ]; then
+        ${DOCKER}
+        -e DOCKER_EMAIL=${DOCKER_EMAIL}
+        -e DOCKER_USER=${DOCKER_USER}
+        -e DOCKER_PASS=${DOCKER_PASS}
+        segment/golang:latest docker.publish image=${IMG} version=latest;
+        fi
