@@ -37,7 +37,7 @@ deployment:
         docker.pass=${DOCKER_PASS}
         docker.image=${IMG}
         docker.version=master
-        docker.tags="circle-${CIRCLE_BUILD_NUM} ${CIRCLE_SHA1:0:7}"
+        docker.tags="circle-${CIRCLE_BUILD_NUM} git-${CIRCLE_SHA1:0:7}"
         ; fi
   release:
     tag: /[0-9]+(\.[0-9]+)*/
