@@ -1,41 +1,37 @@
 machine:
-  environment:
-    BASE_DIR: ${GOPATH%%:*}/src/github.com/${CIRCLE_PROJECT_USERNAME}
-    REPO_DIR: ${BASE_DIR}/${CIRCLE_PROJECT_REPONAME}
-    GO15VENDOREXPERIMENT: 1
   services:
     - docker
-
-checkout:
-  post:
-    - mkdir -p ${BASE_DIR}
-    - ln -sf $(pwd) ${REPO_DIR}
+  environment:
+    PKG: ${CIRCLE_PROJECT_REPONAME}
+    URL: github.com/${CIRCLE_PROJECT_USERNAME}/${PKG}
+    IMG: segment/${PKG}
+    DOCKER: >
+      docker run -i -t
+      -v ${GOPATH%%:*}:/go
+      -v ${HOME}/${PKG}:/go/src/${URL}
+      -v /var/run/docker.sock:/run/docker.sock
+      -v $(which docker):/usr/bin/docker:ro
+      -v $(which docker-compose):/usr/bin/docker-compose:ro
+      -w /go/src/${URL}
 
 dependencies:
   pre:
-    - git submodule update --init --recursive
-    - sudo bash -c 'echo "deb http://ftp.us.debian.org/debian sid main" >> /etc/apt/sources.list'
-    - sudo apt-get update
-    - sudo apt-get install libsystemd-dev
+    - docker pull segment/golang:latest
   override:
-    - cd ${REPO_DIR} && go get -t -d -v ./...
-  post:
+    - ${DOCKER} -v ${HOME}/.ssh:/root/.ssh:ro segment/golang:latest get
 
 test:
-  pre:
-    - cd ${REPO_DIR} && go vet . ./lib/...
   override:
-    - cd ${REPO_DIR} && go test -v -race -cover . ./lib/...
-    - cd ${REPO_DIR} && go test -v -bench . . ./lib/...
+    - ${DOCKER} segment/golang:latest vet lint test bench go.packages='. ./lib'
   post:
-    - cd ${REPO_DIR} && go build
+    - ${DOCKER} segment/golang:latest build go.packages='. ./lib'
 
 deployment:
-  hub:
+  master:
     branch: master
     commands:
-      - docker login -e ${DOCKER_EMAIL} -u ${DOCKER_USER} -p ${DOCKER_PASS}
-      - docker build -t segment/ecs-logs .
-      - docker tag segment/ecs-logs:latest segment/ecs-logs:${CIRCLE_SHA1}
-      - docker tag segment/ecs-logs:latest segment/ecs-logs:circle-${CIRCLE_BUILD_NUM}
-      - docker push segment/ecs-logs
+      - if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish image=${IMG} version=master; fi
+  release:
+    tag: /[0-9]+(\.[0-9]+)*/
+    commands:
+      - if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish image=${IMG} version=latest; fi
