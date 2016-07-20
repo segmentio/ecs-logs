@@ -31,21 +31,23 @@ deployment:
     branch: master
     commands:
       - >
-        if [ -e Dockerfile ]; then
-        ${DOCKER}
-        -e DOCKER_EMAIL=${DOCKER_EMAIL}
-        -e DOCKER_USER=${DOCKER_USER}
-        -e DOCKER_PASS=${DOCKER_PASS}
-        segment/golang:latest docker.publish image=${IMG} version=master;
-        fi
+        if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish
+        docker.email=${DOCKER_EMAIL}
+        docker.user=${DOCKER_USER}
+        docker.pass=${DOCKER_PASS}
+        docker.image=${IMG}
+        docker.version=master
+        docker.tags='${CIRCLE_BUILD_NUM} ${CIRCLE_SHA1}'
+        ; fi
   release:
     tag: /[0-9]+(\.[0-9]+)*/
     commands:
       - >
-        if [ -e Dockerfile ]; then
-        ${DOCKER}
-        -e DOCKER_EMAIL=${DOCKER_EMAIL}
-        -e DOCKER_USER=${DOCKER_USER}
-        -e DOCKER_PASS=${DOCKER_PASS}
-        segment/golang:latest docker.publish image=${IMG} version=latest;
-        fi
+        if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish
+        docker.email=${DOCKER_EMAIL}
+        docker.user=${DOCKER_USER}
+        docker.pass=${DOCKER_PASS}
+        docker.image=${IMG}
+        docker.version=latest
+        docker.tags='${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}'
+        ; fi
