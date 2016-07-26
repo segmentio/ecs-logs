@@ -1,53 +1,21 @@
 machine:
   services:
     - docker
-  environment:
-    PKG: ${CIRCLE_PROJECT_REPONAME}
-    URL: github.com/${CIRCLE_PROJECT_USERNAME}/${PKG}
-    IMG: segment/${PKG}
-    DOCKER: >
-      docker run -i -t
-      -v ${GOPATH%%:*}:/go
-      -v ${HOME}/${PKG}:/go/src/${URL}
-      -v /var/run/docker.sock:/run/docker.sock
-      -v $(which docker):/usr/bin/docker:ro
-      -v $(which docker-compose):/usr/bin/docker-compose:ro
-      -w /go/src/${URL}
 
 dependencies:
-  pre:
-    - docker pull segment/golang:latest
   override:
-    - ${DOCKER} -v ${HOME}/.ssh:/root/.ssh:ro segment/golang:latest get
+    - docker pull segment/golang:latest
 
 test:
   override:
-    - ${DOCKER} segment/golang:latest vet lint test bench go.packages='. ./lib'
-  post:
-    - ${DOCKER} segment/golang:latest build go.packages='. ./lib'
-
-deployment:
-  master:
-    branch: master
-    commands:
-      - >
-        if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish
-        docker.email=${DOCKER_EMAIL}
-        docker.user=${DOCKER_USER}
-        docker.pass=${DOCKER_PASS}
-        docker.image=${IMG}
-        docker.version=master
-        docker.tags="circle-${CIRCLE_BUILD_NUM} git-${CIRCLE_SHA1:0:7}"
-        ; fi
-  release:
-    tag: /[0-9]+(\.[0-9]+)*/
-    commands:
-      - >
-        if [ -e Dockerfile ]; then ${DOCKER} segment/golang:latest docker.publish
-        docker.email=${DOCKER_EMAIL}
-        docker.user=${DOCKER_USER}
-        docker.pass=${DOCKER_PASS}
-        docker.image=${IMG}
-        docker.version=latest
-        docker.tags="circle-${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}"
-        ; fi
+    - >
+      docker run
+      $(env | grep -E '^CIRCLE_|^DOCKER_|^CIRCLE$|^CI$' | sed 's/^/--env /g' | tr "\\n" " ")
+      --rm
+      --tty
+      --interactive
+      --name go
+      --volume /var/run/docker.sock:/run/docker.sock
+      --volume ${PWD}:/go/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+      --workdir /go/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+      segment/golang:latest
