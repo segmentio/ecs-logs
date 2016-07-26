@@ -19,3 +19,12 @@
 [submodule "vendor/github.com/apex/log"]
 	path = vendor/github.com/apex/log
 	url = https://github.com/apex/log
+[submodule "vendor/github.com/go-ini/ini"]
+	path = vendor/github.com/go-ini/ini
+	url = https://github.com/go-ini/ini
+[submodule "vendor/github.com/jmespath/go-jmespath"]
+	path = vendor/github.com/jmespath/go-jmespath
+	url = https://github.com/jmespath/go-jmespath
+[submodule "vendor/github.com/coreos/pkg"]
+	path = vendor/github.com/coreos/pkg
+	url = https://github.com/coreos/pkg
