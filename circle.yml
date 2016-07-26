@@ -10,7 +10,7 @@ test:
   override:
     - >
       docker run
-      $(env | grep -E '^CIRCLE_|^DOCKER_|^CIRCLE$|^CI$' | sed 's/^/--env /g' | tr "\\n" " ")
+      $(env | grep -E '^CIRCLE_|^DOCKER_|^CIRCLE=|^CI=' | sed 's/^/--env /g' | tr "\\n" " ")
       --rm
       --tty
       --interactive
