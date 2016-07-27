@@ -5,8 +5,10 @@ package journald
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/go-systemd/sdjournal"
@@ -26,16 +28,22 @@ func NewReader() (r lib.Reader, err error) {
 		return
 	}
 
-	r = reader{j}
+	r = &reader{Journal: j}
 	return
 }
 
 type reader struct {
+	stopped int32
 	*sdjournal.Journal
 }
 
-func (r reader) ReadMessage() (msg lib.Message, err error) {
-	for {
+func (r *reader) Close() (err error) {
+	atomic.StoreInt32(&r.stopped, 1)
+	return
+}
+
+func (r *reader) ReadMessage() (msg lib.Message, err error) {
+	for atomic.LoadInt32(&r.stopped) == 0 {
 		var cur int
 		var ok bool
 
@@ -44,7 +52,7 @@ func (r reader) ReadMessage() (msg lib.Message, err error) {
 		}
 
 		if cur == 0 {
-			r.Wait(sdjournal.IndefiniteWait)
+			r.Wait(1 * time.Second)
 			continue
 		}
 
@@ -52,9 +60,13 @@ func (r reader) ReadMessage() (msg lib.Message, err error) {
 			return
 		}
 	}
+
+	r.Journal.Close()
+	err = io.EOF
+	return
 }
 
-func (r reader) getMessage() (msg lib.Message, ok bool, err error) {
+func (r *reader) getMessage() (msg lib.Message, ok bool, err error) {
 	if msg.Group, err = r.GetDataValue("CONTAINER_TAG"); len(msg.Group) == 0 {
 		// No CONTAINER_TAG, this must be a journal message from a process that
 		// isn't running in a docker container.
@@ -118,12 +130,12 @@ func (r reader) getMessage() (msg lib.Message, ok bool, err error) {
 	return
 }
 
-func (r reader) getInt(k string) (v int) {
+func (r *reader) getInt(k string) (v int) {
 	v, _ = strconv.Atoi(r.getString(k))
 	return
 }
 
-func (r reader) getTime() (t time.Time) {
+func (r *reader) getTime() (t time.Time) {
 	if u, e := r.GetRealtimeUsec(); e == nil {
 		t = time.Unix(int64(u/1000000), int64((u%1000000)*1000))
 	} else {
@@ -132,7 +144,7 @@ func (r reader) getTime() (t time.Time) {
 	return
 }
 
-func (r reader) getPriority() (p ecslogs.Level) {
+func (r *reader) getPriority() (p ecslogs.Level) {
 	if v, e := strconv.Atoi(r.getString("PRIORITY")); e != nil {
 		p = ecslogs.INFO
 	} else {
@@ -141,7 +153,7 @@ func (r reader) getPriority() (p ecslogs.Level) {
 	return
 }
 
-func (r reader) getString(k string) (s string) {
+func (r *reader) getString(k string) (s string) {
 	s, _ = r.GetDataValue(k)
 	return
 }
