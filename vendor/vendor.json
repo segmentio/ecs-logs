@@ -165,12 +165,6 @@
 			"revisionTime": "2016-02-02T18:50:14Z"
 		},
 		{
-			"checksumSHA1": "dedl6BNNpJVXAhhkdJwLW347qKk=",
-			"path": "github.com/segmentio/ecs-logs",
-			"revision": "85d9ead0d24a86422bfc6dfeb89baa2524e992c1",
-			"revisionTime": "2016-07-27T20:02:03Z"
-		},
-		{
 			"checksumSHA1": "exBQJLaBXogorrNlmjdaVifVdpc=",
 			"path": "github.com/segmentio/ecs-logs-go",
 			"revision": "49d047bbc69ccb12dfc6ad91e763d8f817550012",
