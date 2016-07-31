@@ -27,6 +27,3 @@ _testmain.go
 
 # Emacs
 *~
-
-# Go
-vendor/
