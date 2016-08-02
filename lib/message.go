@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/segmentio/ecs-logs-go"
+	"github.com/segmentio/jutil"
 )
 
 type Message struct {
@@ -23,7 +24,8 @@ func (m Message) String() string {
 }
 
 func (m Message) ContentLength() int {
-	return jsonLen(m.Event)
+	n, _ := jutil.Length(m.Event)
+	return n
 }
 
 type MessageBatch []Message
