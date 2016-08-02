@@ -177,6 +177,12 @@
 			"revisionTime": "2016-07-26T19:29:10Z"
 		},
 		{
+			"checksumSHA1": "yMaAIGignj9Zrcp+MDEglFZfEcs=",
+			"path": "github.com/segmentio/jutil",
+			"revision": "2da69de91201f65d058998009ce0c2143ba699a1",
+			"revisionTime": "2016-08-02T07:29:05Z"
+		},
+		{
 			"checksumSHA1": "/+f6bLkv8bQoWiHMaZrNO9zguns=",
 			"path": "github.com/statsd/client",
 			"revision": "dd7e89e9895a694d75f528a5b72e6a95e6457a11",
