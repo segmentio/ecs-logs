@@ -6,7 +6,9 @@ FROM segment/golang:latest
 COPY . /go/src/github.com/segmentio/ecs-logs
 
 # Build ecs-logs, then cleanup all unneeded packages.
-RUN go build -o /usr/local/bin/ecs-logs github.com/segmentio/ecs-logs && \
+RUN cd /go/src/github.com/segmentio/ecs-logs && \
+    govendor sync && \
+    go build -o /usr/local/bin/ecs-logs && \
     apt-get remove -y apt-transport-https build-essential git curl docker-engine && \
     apt-get autoremove -y && \
     apt-get clean -y && \
