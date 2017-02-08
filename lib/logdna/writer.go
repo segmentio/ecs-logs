@@ -33,7 +33,7 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	}
 
 	if timeFormat = os.Getenv("LOGDNA_TIME_FORMAT"); len(timeFormat) == 0 {
-		timeFormat = "2016-02-10T09:28:01.982Z08:00"
+		timeFormat = "2016-02-10T09:28:01.982-08:00"
 	}
 
 	return syslog.DialWriter(syslog.WriterConfig{
