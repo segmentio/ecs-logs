@@ -29,7 +29,10 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	}
 
 	if template = os.Getenv("LOGDNA_TEMPLATE"); len(template) == 0 {
-		template = "<key:" + token + "> <{{.PRIVAL}}>{{.TIMESTAMP}} {{.HOSTNAME}} {{.GROUP}}[{{.STREAM}}] {{.TAG}} {{.MSG}}"
+		template = "<{{.PRIVAL}}>1 {{.TIMESTAMP}} {{.HOSTNAME}} {{.GROUP}} {{.STREAM}} {{.MSGID}} [{{.TAG}}] {{.MSG}}"
+		if len(token) != 0 {
+			template = "<key:" + token + "> " + template
+		}
 	}
 
 	if timeFormat = os.Getenv("LOGDNA_TIME_FORMAT"); len(timeFormat) == 0 {
@@ -41,7 +44,7 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 		Address:    address,
 		Template:   template,
 		TimeFormat: timeFormat,
-		Tag:        tags,
+		Tag:        fmt.Sprintf("logdna@48950 %s", tags),
 		TLS: &tls.Config{
 			InsecureSkipVerify: true,
 		},
@@ -89,7 +92,6 @@ func parseEndpoint(endpoint string, group string, stream string) (protocol strin
 	if token, err = extractToken(u); err != nil {
 		return
 	}
-
 	tags = extractTags(u, q)
 	return
 }
@@ -128,9 +130,5 @@ func extractToken(u *url.URL) (token string, err error) {
 }
 
 func extractTags(u *url.URL, q url.Values) string {
-	tags := q["tag"]
-	list := make([]string, 0, len(tags))
-	list = append(list, tags...)
-
-	return strings.Join(list, ",")
+	return fmt.Sprintf("tags=\"%s\"", strings.Join(q["tag"], ","))
 }
