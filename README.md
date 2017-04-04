@@ -137,6 +137,8 @@ structure that ecs-logs recognize.*
 
 ### Proxy
 
-To send your logs through a proxy, you can set the `HTTP_PROXY` or `SOCKS_PROXY` environment variable.
+To send your logs through a proxy, you can set the `HTTP_PROXY`, `HTTPS_PROXY` or `SOCKS_PROXY` environment variable.
+
+`NO_PROXY` can also be set to filter networks where the proxy should not be used.
 
 `SOCKS_PROXY` should follow the format `host:port`. If incorrect, the variable will be ignored.

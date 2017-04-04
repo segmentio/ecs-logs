@@ -245,9 +245,9 @@ func (c bufferedConn) Flush() error                { return c.buf.Flush() }
 func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
 
 func dialWriter(network string, address string, config *tls.Config, socksProxy string) (w io.Writer, err error) {
-	var conn net.Conn
+	var conn, rawConn net.Conn
 	var dial func(string, string) (net.Conn, error)
-	var socksDialer *SocksDialer
+	var socksDialer proxy.Dialer
 
 	if network == "tls" {
 		network, dial = "tcp", func(network, address string) (net.Conn, error) {
@@ -258,11 +258,26 @@ func dialWriter(network string, address string, config *tls.Config, socksProxy s
 	}
 
 	if socksProxy != "" {
-		socksDialer = &SocksDialer{tlsConfig: config}
-		if err = socksDialer.connect(network, socksProxy); err != nil {
+		if socksDialer, err = proxy.SOCKS5(network, socksProxy, nil, proxy.Direct); err != nil {
 			return
 		}
-		dial = socksDialer.dial
+
+		dial = func(network, address string) (conn net.Conn, err error) {
+			if config == nil {
+				conn, err = socksDialer.Dial(network, address)
+			} else {
+				rawConn, err = socksDialer.Dial(network, address)
+				if err != nil {
+					return nil, err
+				}
+
+				tlsConn := tls.Client(rawConn, config)
+				if err = tlsConn.Handshake(); err == nil {
+					conn = tlsConn
+				}
+			}
+			return
+		}
 	}
 
 	for attempt := 1; true; attempt++ {
@@ -290,33 +305,5 @@ func dialWriter(network string, address string, config *tls.Config, socksProxy s
 		}
 	}
 
-	return
-}
-
-type SocksDialer struct {
-	dialer    proxy.Dialer
-	tlsConfig *tls.Config
-}
-
-func (d *SocksDialer) connect(network, proxyAddr string) (err error) {
-	d.dialer, err = proxy.SOCKS5(network, proxyAddr, nil, proxy.Direct)
-	return
-}
-
-func (d *SocksDialer) dial(network, address string) (conn net.Conn, err error) {
-	var rawConn net.Conn
-	if d.tlsConfig == nil {
-		conn, err = d.dialer.Dial(network, address)
-	} else {
-		rawConn, err = d.dialer.Dial(network, address)
-		if err != nil {
-			return
-		}
-
-		tlsConn := tls.Client(rawConn, d.tlsConfig)
-		if err = tlsConn.Handshake(); err == nil {
-			conn = tlsConn
-		}
-	}
 	return
 }
