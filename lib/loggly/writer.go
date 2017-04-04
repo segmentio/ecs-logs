@@ -3,10 +3,12 @@ package loggly
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/segmentio/ecs-logs/lib"
 	"github.com/segmentio/ecs-logs/lib/syslog"
 )
@@ -20,6 +22,7 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	var tags string
 	var template string
 	var timeFormat string
+	var socksProxy string
 
 	if endpoint, err = getEndpoint(); err != nil {
 		return
@@ -37,6 +40,14 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 		timeFormat = "2006-01-02T15:04:05.999Z07:00"
 	}
 
+	socksProxy = os.Getenv("SOCKS_PROXY")
+	if _, _, err = net.SplitHostPort(socksProxy); err != nil {
+		log.WithFields(log.Fields{
+			"SOCKS_PROXY": socksProxy,
+		}).Warn("bad format, proxy setting will be ignored")
+		socksProxy = ""
+	}
+
 	return syslog.DialWriter(syslog.WriterConfig{
 		Network:    protocol,
 		Address:    address,
@@ -46,6 +57,7 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 		TLS: &tls.Config{
 			InsecureSkipVerify: true,
 		},
+		SocksProxy: socksProxy,
 	})
 }
 
