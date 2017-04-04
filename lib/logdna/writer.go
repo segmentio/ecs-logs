@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/segmentio/ecs-logs/lib"
 	"github.com/segmentio/ecs-logs/lib/syslog"
 )
@@ -43,6 +44,9 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 
 	socksProxy = os.Getenv("SOCKS_PROXY")
 	if _, _, err = net.SplitHostPort(socksProxy); err != nil {
+		log.WithFields(log.Fields{
+			"SOCKS_PROXY": socksProxy,
+		}).Warn("bad format, proxy setting will be ignored")
 		socksProxy = ""
 	}
 
