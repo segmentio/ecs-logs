@@ -199,6 +199,12 @@
 			"path": "github.com/visionmedia/go-debug",
 			"revision": "ff4a55a20a86994118644bbddc6a216da193cc13",
 			"revisionTime": "2014-10-22T19:30:16Z"
+		},
+		{
+			"checksumSHA1": "fjMK2G5arnjllpoeBYeyf9Y2Iok=",
+			"path": "golang.org/x/net/proxy",
+			"revision": "ffcf1bedda3b04ebb15a168a59800a73d6dc0f4d",
+			"revisionTime": "2017-03-29T01:43:45Z"
 		}
 	],
 	"rootPath": "github.com/segmentio/ecs-logs"

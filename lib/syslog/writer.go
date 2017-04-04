@@ -14,6 +14,8 @@ import (
 	"text/template"
 	"time"
 
+	"golang.org/x/net/proxy"
+
 	"github.com/segmentio/ecs-logs/lib"
 )
 
@@ -28,6 +30,7 @@ type WriterConfig struct {
 	TimeFormat string
 	Tag        string
 	TLS        *tls.Config
+	SocksProxy string
 }
 
 func NewWriter(group string, stream string) (w lib.Writer, err error) {
@@ -83,7 +86,7 @@ func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 connect:
 	for _, n := range netopts {
 		for _, a := range addropts {
-			if backend, err = dialWriter(n, a, config.TLS); err == nil {
+			if backend, err = dialWriter(n, a, config.TLS, config.SocksProxy); err == nil {
 				break connect
 			}
 		}
@@ -241,16 +244,25 @@ func (c bufferedConn) Close() error                { return c.conn.Close() }
 func (c bufferedConn) Flush() error                { return c.buf.Flush() }
 func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
 
-func dialWriter(network string, address string, config *tls.Config) (w io.Writer, err error) {
+func dialWriter(network string, address string, config *tls.Config, socksProxy string) (w io.Writer, err error) {
 	var conn net.Conn
 	var dial func(string, string) (net.Conn, error)
+	var socksDialer *SocksDialer
 
 	if network == "tls" {
-		network, dial = "tcp", func(network string, address string) (net.Conn, error) {
+		network, dial = "tcp", func(network, address string) (net.Conn, error) {
 			return tls.Dial(network, address, config)
 		}
 	} else {
 		dial = net.Dial
+	}
+
+	if socksProxy != "" {
+		socksDialer = &SocksDialer{tlsConfig: config}
+		if err = socksDialer.connect(network, socksProxy); err != nil {
+			return
+		}
+		dial = socksDialer.dial
 	}
 
 	for attempt := 1; true; attempt++ {
@@ -278,5 +290,33 @@ func dialWriter(network string, address string, config *tls.Config) (w io.Writer
 		}
 	}
 
+	return
+}
+
+type SocksDialer struct {
+	dialer    proxy.Dialer
+	tlsConfig *tls.Config
+}
+
+func (d *SocksDialer) connect(network, proxyAddr string) (err error) {
+	d.dialer, err = proxy.SOCKS5(network, proxyAddr, nil, proxy.Direct)
+	return
+}
+
+func (d *SocksDialer) dial(network, address string) (conn net.Conn, err error) {
+	var rawConn net.Conn
+	if d.tlsConfig == nil {
+		conn, err = d.dialer.Dial(network, address)
+	} else {
+		rawConn, err = d.dialer.Dial(network, address)
+		if err != nil {
+			return
+		}
+
+		tlsConn := tls.Client(rawConn, d.tlsConfig)
+		if err = tlsConn.Handshake(); err == nil {
+			conn = tlsConn
+		}
+	}
 	return
 }

@@ -3,6 +3,7 @@ package logdna
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strings"
@@ -19,6 +20,7 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	var tags string
 	var template string
 	var timeFormat string
+	var socksProxy string
 
 	if endpoint, err = getEndpoint(); err != nil {
 		return
@@ -39,6 +41,11 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 		timeFormat = "2016-02-10T09:28:01.982-08:00"
 	}
 
+	socksProxy = os.Getenv("SOCKS_PROXY")
+	if _, _, err = net.SplitHostPort(socksProxy); err != nil {
+		socksProxy = ""
+	}
+
 	return syslog.DialWriter(syslog.WriterConfig{
 		Network:    protocol,
 		Address:    address,
@@ -48,6 +55,7 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 		TLS: &tls.Config{
 			InsecureSkipVerify: true,
 		},
+		SocksProxy: socksProxy,
 	})
 }
 
