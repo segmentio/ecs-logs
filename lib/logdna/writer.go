@@ -42,12 +42,13 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 		timeFormat = "2016-02-10T09:28:01.982-08:00"
 	}
 
-	socksProxy = os.Getenv("SOCKS_PROXY")
-	if _, _, err = net.SplitHostPort(socksProxy); err != nil {
-		log.WithFields(log.Fields{
-			"SOCKS_PROXY": socksProxy,
-		}).Warn("bad format, proxy setting will be ignored")
-		socksProxy = ""
+	if socksProxy = os.Getenv("SOCKS_PROXY"); len(socksProxy) > 0 {
+		if _, _, err = net.SplitHostPort(socksProxy); err != nil {
+			log.WithFields(log.Fields{
+				"SOCKS_PROXY": socksProxy,
+			}).Warn("bad format, proxy setting will be ignored")
+			socksProxy = ""
+		}
 	}
 
 	return syslog.DialWriter(syslog.WriterConfig{
