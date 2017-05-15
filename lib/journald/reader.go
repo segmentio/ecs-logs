@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -28,12 +29,18 @@ func NewReader() (r lib.Reader, err error) {
 		return
 	}
 
-	r = &reader{Journal: j}
+	var streamName string
+	if streamName = os.Getenv("JOURNALD_STREAM_NAME"); len(streamName) == 0 {
+		streamName = "CONTAINER_NAME"
+	}
+
+	r = &reader{Journal: j, streamName: streamName}
 	return
 }
 
 type reader struct {
-	stopped int32
+	streamName string
+	stopped    int32
 	*sdjournal.Journal
 }
 
@@ -74,12 +81,19 @@ func (r *reader) getMessage() (msg lib.Message, ok bool, err error) {
 		return
 	}
 
-	if msg.Stream, err = r.GetDataValue("CONTAINER_NAME"); err != nil {
-		// There's a CONTAINER_TAG but no CONTAINER_NAME, something is seriously
-		// wrong here, the log docker log driver is misbehaving.
-		err = fmt.Errorf("missing CONTAINER_NAME in message with CONTAINER_TAG=%s", msg.Group)
-		return
+	if msg.Stream, err = r.GetDataValue(r.streamName); err != nil {
+		// Fallback to CONTAINER_NAME
+		if msg.Stream, err = r.GetDataValue("CONTAINER_NAME"); err != nil {
+
+			// There's a CONTAINER_TAG but no CONTAINER_NAME, something is seriously
+			// wrong here, the log docker log driver is misbehaving.
+			err = fmt.Errorf("missing CONTAINER_NAME in message with CONTAINER_TAG=%s", msg.Group)
+
+			return
+		}
 	}
+
+	msg.Stream = sanitizeStreamName(msg.Stream)
 
 	if s := r.getString("MESSAGE"); len(s) != 0 {
 		d := json.NewDecoder(strings.NewReader(s))
@@ -156,4 +170,14 @@ func (r *reader) getPriority() (p ecslogs.Level) {
 func (r *reader) getString(k string) (s string) {
 	s, _ = r.GetDataValue(k)
 	return
+}
+
+func sanitizeStreamName(name string) string {
+	name = strings.Replace(name, ":", "/", -1)
+	name = strings.Replace(name, "*", "/", -1)
+	max := len(name)
+	if max > 512 {
+		max = 512
+	}
+	return name[:max]
 }
