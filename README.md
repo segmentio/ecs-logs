@@ -27,7 +27,7 @@ CloudWatch logs*
 Once you have ecs-agent properly configured (you should be able to see your ECS
 services logs in the journal), you can start ecs-logs this way:
 ```
-docker run -t -i -v /run/logs/journal:/run/logs/journal:ro \
+docker run -t -i -v /run/log/journal:/run/log/journal:ro \
     segment/ecs-logs:latest -src journald -dst cloudwatchlogs
 ```
 That's it! The services logs should now be showing up in CloudWatch Logs.
