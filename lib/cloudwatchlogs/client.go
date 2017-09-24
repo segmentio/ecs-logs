@@ -110,30 +110,23 @@ func openAwsClient() (client *cloudwatchlogs.CloudWatchLogs, err error) {
 	return
 }
 
-func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, stream string) (string, error) {
+func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, stream string) (token string, err error) {
 	var result *cloudwatchlogs.DescribeLogStreamsOutput
 
 	if _, err := client.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 		LogGroupName: aws.String(group),
-	}); err != nil {
-		// It's OK if the log already exists
-		if err, ok := err.(awserr.Error); !ok || err.Code() != "ResourceAlreadyExistsException" {
-			// Some other error occurred
-			return "", err
-		}
+	}); err != nil && !isAlreadyExists(err) {
+		return "", err
 	}
 
-	_, err := client.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+	_, err = client.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 		LogGroupName:  aws.String(group),
 		LogStreamName: aws.String(stream),
 	})
 	if err == nil {
 		// Log stream successfully created.  No token need be provided.
 		return "", nil
-	}
-
-	if err, ok := err.(awserr.Error); !ok || err.Code() != "ResourceAlreadyExistsException" {
-		// Some other error occurred
+	} else if !isAlreadyExists(err) {
 		return "", err
 	}
 
@@ -142,21 +135,20 @@ func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, s
 		LogGroupName:        aws.String(group),
 		LogStreamNamePrefix: aws.String(stream),
 	}); err != nil {
-		// The documentation says that we can only make 5 calls per second to
-		// this endpoint, but we need the sequence token in order to send events
-		// to streams that already exist.
-		//
-		// If we fail to fetch the stream description we still move on without
-		// a token and let the retry logic around PutLogEvents attempt to handle
-		// the issue.
-		if err, ok := err.(awserr.Error); ok && err.Code() == "ThrottlingException" {
+		if isThrottled(err) {
+			// The documentation says that we can only make 5 calls per second to
+			// this endpoint, but we need the sequence token in order to send events
+			// to streams that already exist.
+			//
+			// If we fail to fetch the stream description we still move on without
+			// a token and let the retry logic around PutLogEvents attempt to handle
+			// the issue.
 			return "", nil
-		} else {
-			return "", err
 		}
+		return "", err
 	}
 
-	// It would be very odd if this actually occurred.
+	// This should be an invariant
 	if len(result.LogStreams) == 0 {
 		return "", fmt.Errorf("Assertion failure: Log stream %s: %s not found",
 			group, stream)
@@ -167,4 +159,19 @@ func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, s
 
 func joinGroupStream(group string, stream string) string {
 	return group + ":" + stream
+}
+
+func isAwsErrorCode(err error, code string) bool {
+	if err, ok := err.(awserr.Error); ok && err.Code() == code {
+		return true
+	}
+	return false
+}
+
+func isAlreadyExists(err error) bool {
+	return isAwsErrorCode(err, "ResourceAlreadyExistsException")
+}
+
+func isThrottled(err error) bool {
+	return isAwsErrorCode(err, "ThrottlingException")
 }
