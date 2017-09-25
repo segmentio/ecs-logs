@@ -19,7 +19,7 @@ depend:
 dep: depend
 
 test:
-	go test $(go list ./...)
+	go test $(shell go list ./...)
 
 $(DEBFILE): bin/ecs-logs-linux-amd64
 	@if [ -z "$(VERSION)" ]; then echo "VERSION not defined"; false; fi
