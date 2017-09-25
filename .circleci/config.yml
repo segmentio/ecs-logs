@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: segment/golang:latest
+    steps:
+      - checkout
+      - run:
+          name: test
+          command: go test $(go list ./...)
+      - run:
+          name: build package
+          command: make deb
