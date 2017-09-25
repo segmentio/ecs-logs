@@ -7,6 +7,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: check out dependencies
+          command: make dep
+      - run:
           name: test
           command: make test
       - run:
