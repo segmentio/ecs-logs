@@ -18,6 +18,9 @@ depend:
 
 dep: depend
 
+test:
+	go test $(go list ./...)
+
 $(DEBFILE): bin/ecs-logs-linux-amd64
 	@if [ -z "$(VERSION)" ]; then echo "VERSION not defined"; false; fi
 	fpm -s dir  -t deb -n ecs-logs -v $(VERSION) -m sre-team@segment.com --vendor "Segment.io, Inc." \
@@ -31,4 +34,4 @@ upload_deb: $(DEBFILE)
 clean:
 	-rm -f bin/* *.deb
 
-.PHONY: depend dep clean deb upload_deb
+.PHONY: depend dep test clean deb upload_deb

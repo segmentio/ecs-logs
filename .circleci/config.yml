@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: test
-          command: go test $(go list ./...)
+          command: make test
       - run:
           name: build package
           command: make deb
