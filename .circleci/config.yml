@@ -25,13 +25,13 @@ jobs:
             else
               echo "Skipped"
             fi
-      - setup_remote_docker
-      - run:
-          name: build Docker image
-          command: |
-            if [ "$CIRCLE_BRANCH" = "master" ] && git describe --tags --exact-match >/dev/null 2>&1; then
-              make image
-              make push_image
-            else
-              echo "Skipped"
-            fi
+#      - setup_remote_docker
+#     - run:
+#         name: build Docker image
+#         command: |
+#           if [ "$CIRCLE_BRANCH" = "master" ] && git describe --tags --exact-match >/dev/null 2>&1; then
+#             make image
+#             make push_image
+#           else
+#             echo "Skipped"
+#           fi
