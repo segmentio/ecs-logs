@@ -18,15 +18,20 @@ jobs:
       - run:
           name: build package
           command: |
-            if [ "$CIRCLE_BRANCH" = "master" ]; then
+            if [ "$CIRCLE_BRANCH" = "master" ] && git describe --tags --exact-match >/dev/null 2>&1; then
+              echo "{\"url\":\"https://packagecloud.io\",\"token\":\"$PACKAGECLOUD_TOKEN\"}" > $HOME/.packagecloud
               make deb
               make upload_deb
+            else
+              echo "Skipped"
             fi
       - setup_remote_docker
       - run:
           name: build Docker image
           command: |
-            if [ "$CIRCLE_BRANCH" = "master" ]; then
+            if [ "$CIRCLE_BRANCH" = "master" ] && git describe --tags --exact-match >/dev/null 2>&1; then
               make image
               make push_image
+            else
+              echo "Skipped"
             fi
