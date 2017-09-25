@@ -5,6 +5,7 @@ LDFLAGS := "-X main.version=$(VERSION)"
 REPO := github.com/segmentio/ecs-logs
 DEBFILE := ecs-logs_$(VERSION)_amd64.deb
 SOURCES := $(git ls-files *.go)
+DOCKER_TAG := segment/ecs-logs:v$(VERSION)
 
 default: bin/ecs-logs-linux-amd64
 
@@ -31,7 +32,13 @@ deb: $(DEBFILE)
 upload_deb: $(DEBFILE)
 	package_cloud push segment/infra/ubuntu/xenial $(DEBFILE)
 
+image:
+	docker build -t $(DOCKER_TAG) .
+
+push_image:
+	docker push $(DOCKER_TAG)
+
 clean:
 	-rm -f bin/* *.deb
 
-.PHONY: depend dep test clean deb upload_deb
+.PHONY: depend dep test clean deb upload_deb image push_image

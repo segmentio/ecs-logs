@@ -17,4 +17,16 @@ jobs:
           command: make test
       - run:
           name: build package
-          command: make deb
+          command: |
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              make deb
+              make upload_deb
+            fi
+      - setup_remote_docker
+      - run:
+          name: build Docker image
+          command: |
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              make image
+              make push_image
+            fi
