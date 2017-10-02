@@ -1,6 +1,6 @@
 # We need a go compiler that's based on an image with libsystemd-dev installed,
 # segment/golang give us just that.
-FROM segment/golang:latest
+FROM segment/golang:1.9
 
 # Copy the ecs-logs sources so they can be built within the container.
 COPY . /go/src/github.com/segmentio/ecs-logs
