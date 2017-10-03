@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -86,7 +87,7 @@ func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 connect:
 	for _, n := range netopts {
 		for _, a := range addropts {
-			if backend, err = dialWriter(n, a, config.TLS, config.SocksProxy); err == nil {
+			if backend, err = cachedDialWriter(n, a, config.TLS, config.SocksProxy); err == nil {
 				break connect
 			}
 		}
@@ -98,6 +99,7 @@ connect:
 
 	w = newWriter(writerConfig{
 		backend:    backend,
+		config:     config,
 		template:   config.Template,
 		timeFormat: config.TimeFormat,
 		tag:        config.Tag,
@@ -107,6 +109,7 @@ connect:
 
 type writerConfig struct {
 	backend    io.Writer
+	config     WriterConfig
 	template   string
 	timeFormat string
 	tag        string
@@ -150,20 +153,36 @@ func newWriterTemplate(format string) *template.Template {
 
 type writer struct {
 	writerConfig
+	sync.Mutex
 	buf   bytes.Buffer
 	tpl   *template.Template
 	out   func(*writer, message) error
 	flush func() error
 }
 
+// For this backend, Close() will not actually close the socket. This is a
+// temporary hack to allow the connection to remain open for reuse between
+// multiple caller write() operations. It's not ever necessary to close the
+// socket during the normal operation of ecs-logs since we don't allow runtime
+// reconfiguration of destinations yet.  This is not ideal, but a more elegant
+// fix would involve updating the API and every destination and is significantly
+// more work than we can afford right now. --MSF 2017-10-02
 func (w *writer) Close() (err error) {
+	return
+}
+
+// This is the real close function.
+func (w *writer) reallyClose() (err error) {
 	if c, ok := w.backend.(io.Closer); ok {
 		err = c.Close()
+		writerCache.Delete(writerCacheKey(w.config.Network, w.config.Address, w.config.SocksProxy))
 	}
 	return
 }
 
 func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
+	w.Lock()
+	defer w.Unlock()
 	for _, msg := range batch {
 		if err = w.write(msg); err != nil {
 			return
@@ -173,6 +192,8 @@ func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
 }
 
 func (w *writer) WriteMessage(msg lib.Message) (err error) {
+	w.Lock()
+	defer w.Unlock()
 	if err = w.write(msg); err == nil {
 		err = w.flush()
 	}
@@ -205,7 +226,11 @@ func (w *writer) write(msg lib.Message) (err error) {
 	}
 
 	m.MSG = msg.Event.String()
-	return w.out(w, m)
+	err = w.out(w, m)
+	if err != nil {
+		w.reallyClose()
+	}
+	return
 }
 
 func (w *writer) directWrite(m message) (err error) {
@@ -243,6 +268,34 @@ type bufferedConn struct {
 func (c bufferedConn) Close() error                { return c.conn.Close() }
 func (c bufferedConn) Flush() error                { return c.buf.Flush() }
 func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
+
+var dialMutex = sync.Map{}
+var writerCache = sync.Map{}
+
+func writerCacheKey(network string, address string, socksProxy string) string {
+	// We don't currently include the TLS configuration in the cache key. For
+	// now, this is probably OK as the TLS configuration is unlikely to change.
+	return network + ";" + address + ";" + socksProxy
+}
+
+func cachedDialWriter(network string, address string, config *tls.Config, socksProxy string) (w io.Writer, err error) {
+	key := writerCacheKey(network, address, socksProxy)
+
+	res, _ := dialMutex.LoadOrStore(key, &sync.Mutex{})
+	mu := res.(*sync.Mutex)
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Fast path: return if already in the cache
+	if w, ok := writerCache.Load(key); ok {
+		return w.(io.Writer), nil
+	}
+	w, err = dialWriter(network, address, config, socksProxy)
+	if err != nil {
+		writerCache.Store(key, w)
+	}
+	return w, err
+}
 
 func dialWriter(network string, address string, config *tls.Config, socksProxy string) (w io.Writer, err error) {
 	var conn, rawConn net.Conn
