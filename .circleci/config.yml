@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: segment/golang:1.9
+      - image: segment/golang:latest
     working_directory: /go/src/github.com/segmentio/ecs-logs
     steps:
       - checkout
