@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -19,8 +20,16 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 )
 
-const (
-	DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
+const DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
+
+// Global writer pool - channel style. Each writer is configured
+// using the same environment variables, so any connection is usable
+// by any caller. Writers graduate to the pool if Close() is called
+// and no errors have occured while writing to the writer.
+var (
+	writerPool     = make(chan *writer, 100)
+	enablePooling  = false
+	newConnections uint64
 )
 
 type WriterConfig struct {
@@ -33,15 +42,26 @@ type WriterConfig struct {
 	SocksProxy string
 }
 
-func NewWriter(group string, stream string) (w lib.Writer, err error) {
-	var c WriterConfig
-	var s string
-	var u *url.URL
+func NewWriter(group, stream string) (lib.Writer, error) {
+	if enablePooling {
+		// Retrieve a writer from the global pool, if possible.
+		var w *writer
+		select {
+		case w = <-writerPool:
+			return w, nil
+		default:
+			// No writers immediately available; make a new one.
+		}
+	}
 
-	if s = os.Getenv("SYSLOG_URL"); len(s) != 0 {
-		if u, err = url.Parse(s); err != nil {
-			err = fmt.Errorf("invalid syslog URL: %s", err)
-			return
+	atomic.AddUint64(&newConnections, 1)
+
+	var c WriterConfig
+
+	if s := os.Getenv("SYSLOG_URL"); len(s) != 0 {
+		u, err := url.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid syslog URL: %s", err)
 		}
 
 		c.Network = u.Scheme
@@ -57,7 +77,6 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 	var netopts []string
 	var addropts []string
-	var backend io.Writer
 
 	if len(config.Network) != 0 {
 		netopts = []string{config.Network}
@@ -83,6 +102,8 @@ func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 		addropts = []string{"localhost:514"}
 	}
 
+	var backend io.WriteCloser
+
 connect:
 	for _, n := range netopts {
 		for _, a := range addropts {
@@ -106,7 +127,7 @@ connect:
 }
 
 type writerConfig struct {
-	backend    io.Writer
+	backend    io.WriteCloser
 	template   string
 	timeFormat string
 	tag        string
@@ -154,29 +175,48 @@ type writer struct {
 	tpl   *template.Template
 	out   func(*writer, message) error
 	flush func() error
+
+	// Global writer pool state
+	dead bool
 }
 
 func (w *writer) Close() (err error) {
-	if c, ok := w.backend.(io.Closer); ok {
-		err = c.Close()
+	if w.dead {
+		return w.Close()
 	}
-	return
+
+	if enablePooling {
+		// w is still fine, put it back in the pool for reuse.
+		writerPool <- w
+	}
+	return nil
 }
 
-func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
+func (w *writer) WriteMessageBatch(batch lib.MessageBatch) error {
 	for _, msg := range batch {
-		if err = w.write(msg); err != nil {
-			return
+		if err := w.write(msg); err != nil {
+			w.dead = true
+			return err
 		}
 	}
-	return w.flush()
+	if err := w.flush(); err != nil {
+		w.dead = true
+		return err
+	}
+	return nil
 }
 
-func (w *writer) WriteMessage(msg lib.Message) (err error) {
-	if err = w.write(msg); err == nil {
-		err = w.flush()
+func (w *writer) WriteMessage(msg lib.Message) error {
+	if err := w.write(msg); err != nil {
+		w.dead = true
+		return err
 	}
-	return
+	if err := w.flush(); err != nil {
+		w.dead = true
+		return err
+	}
+
+	return nil
 }
 
 func (w *writer) write(msg lib.Message) (err error) {
@@ -244,7 +284,7 @@ func (c bufferedConn) Close() error                { return c.conn.Close() }
 func (c bufferedConn) Flush() error                { return c.buf.Flush() }
 func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
 
-func dialWriter(network string, address string, config *tls.Config, socksProxy string) (w io.Writer, err error) {
+func dialWriter(network, address string, config *tls.Config, socksProxy string) (w io.WriteCloser, err error) {
 	var conn, rawConn net.Conn
 	var dial func(string, string) (net.Conn, error)
 	var socksDialer proxy.Dialer
