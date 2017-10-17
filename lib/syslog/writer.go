@@ -22,12 +22,16 @@ import (
 
 const DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
 
-// Global writer pool - channel style. Each writer is configured
-// using the same environment variables, so any connection is usable
-// by any caller. Writers graduate to the pool if Close() is called
-// and no errors have occured while writing to the writer.
+// Global writer pool - channel style.
+// When NewWriter is called, a writer is taken from the pool if available.
+// Otherwise a new writer is created. Since each writer is configured
+// using the same environment variables, any writer can be used by any caller.
+// When writer.Close() is called, the writer is put back into the pool if
+// no errors have occured, or closed and discarded otherwise.
 var (
-	writerPool     = make(chan *writer, 100)
+	writerPool = make(chan *writer, 100)
+
+	// Useful for testing
 	enablePooling  = false
 	newConnections uint64
 )
