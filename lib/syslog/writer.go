@@ -29,7 +29,7 @@ const DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{
 // When writer.Close() is called, the writer is put back into the pool if
 // no errors have occured, or closed and discarded otherwise.
 var (
-	writerPool = make(chan *writer, 100)
+	writerPool = make(chan *writer, 100) // 100 is arbitrary.
 
 	// Useful for testing
 	enablePooling  = false
@@ -186,12 +186,17 @@ type writer struct {
 
 func (w *writer) Close() (err error) {
 	if w.dead {
-		return w.Close()
+		return w.backend.Close()
 	}
 
 	if enablePooling {
 		// w is still fine, put it back in the pool for reuse.
-		writerPool <- w
+		// If the pool is full, discard this writer.
+		select {
+		case writerPool <- w:
+		default:
+			return w.backend.Close()
+		}
 	}
 	return nil
 }

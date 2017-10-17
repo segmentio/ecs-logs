@@ -43,7 +43,7 @@ func testWriter(t *testing.T) {
 	for i := 0; i < testGoroutines; i++ {
 		go func(i int) {
 			for {
-				d := time.Duration(rand.Intn(100)) * time.Millisecond
+				d := time.Duration(rand.Intn(10)) * time.Millisecond
 				time.Sleep(d)
 				w, err := NewWriter("foo", "bar")
 				if err != nil {
