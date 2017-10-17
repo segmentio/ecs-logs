@@ -18,11 +18,12 @@ func TestWriterPool(t *testing.T) {
 
 	// Verify that a sane number of writers are going into the pool.
 	go func() {
+		start := time.Now()
 		for range time.Tick(1 * time.Second) {
 			if length := len(writerPool); length > testGoroutines {
 				t.Errorf("got len(writerPool)=%d, want <= %d", length, testGoroutines)
 			} else {
-				t.Logf("%d writers in the pool\n", length)
+				t.Logf("T+%02.2vs: %d writers in the pool\n", time.Since(start).Seconds(), length)
 			}
 
 		}

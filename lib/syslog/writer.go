@@ -194,11 +194,12 @@ func (w *writer) Close() (err error) {
 		// If the pool is full, discard this writer.
 		select {
 		case writerPool <- w:
+			return nil
 		default:
-			return w.backend.Close()
 		}
 	}
-	return nil
+
+	return w.backend.Close()
 }
 
 func (w *writer) WriteMessageBatch(batch lib.MessageBatch) error {
