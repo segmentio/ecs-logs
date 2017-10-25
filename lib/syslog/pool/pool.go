@@ -8,7 +8,7 @@ import (
 // the total number of live connections is limited to the size
 // parameter passed to NewLimited. In order to make this guarantee,
 // we assume that all new connections are introduced by calls to the
-// Get method, and return to the pool by the Put method (whether
+// Get method, and returned to the pool by the Put method (whether
 // or not the connection is dead)
 type LimitedConnPool struct {
 	conns  chan io.WriteCloser // Available connections in the pool
