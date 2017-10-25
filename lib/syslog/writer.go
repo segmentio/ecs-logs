@@ -117,6 +117,16 @@ func DialWriter(config WriterConfig) (lib.Writer, error) {
 	return nil, err
 }
 
+type multiError []error
+
+func (m multiError) Error() string {
+	s := "encountered errors:\n"
+	for err := range m {
+		s += fmt.Sprintf("\t%v\n", err)
+	}
+	return s
+}
+
 type writer struct {
 	// configuration
 	timefmt string
@@ -159,6 +169,22 @@ func newWriter(opts dialOpts, cfg WriterConfig) (*writer, error) {
 		out, flush = (*writer).bufferedWrite, func() error { return nil }
 	}
 
+	// Check for errors reported by the pool when dialing
+	errc := p.Errors()
+	var errs multiError
+loop:
+	for {
+		select {
+		case err := <-errc:
+			errs = append(errs, err)
+		default:
+			break loop
+		}
+	}
+	if errs != nil {
+		return nil, errs
+	}
+
 	return &writer{
 		timefmt: cfg.TimeFormat,
 		tpl:     newWriterTemplate(cfg.Template),
@@ -185,7 +211,7 @@ func getPool(opts dialOpts) (*pool.LimitedConnPool, error) {
 			return dialWriter(opts.network, opts.address, opts.tls, opts.socksProxy)
 		}
 		var err error
-		p, err = pool.New(dial, poolSize)
+		p, err = pool.NewLimited(poolSize, dial)
 		if err != nil {
 			return nil, err
 		}

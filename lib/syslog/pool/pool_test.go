@@ -21,7 +21,7 @@ func TestPool(t *testing.T) {
 		return nil, errors.New("failed to dial")
 	}
 
-	p, err := New(dial, size)
+	p, err := NewLimited(size, dial)
 	if err != nil {
 		t.Fatal(err)
 	}
