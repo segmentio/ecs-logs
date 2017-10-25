@@ -3,7 +3,6 @@ package syslog
 import (
 	"fmt"
 	"math/rand"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,31 +12,7 @@ import (
 
 const testGoroutines = 50
 
-func TestWriterPool(t *testing.T) {
-	enablePooling = true
-
-	// Verify that a sane number of writers are going into the pool.
-	go func() {
-		start := time.Now()
-		for range time.Tick(1 * time.Second) {
-			if length := len(writerPool); length > testGoroutines {
-				t.Errorf("got len(writerPool)=%d, want <= %d", length, testGoroutines)
-			} else {
-				t.Logf("T+%02.2vs: %d writers in the pool\n", time.Since(start).Seconds(), length)
-			}
-
-		}
-	}()
-
-	testWriter(t)
-}
-
-func TestWriterNoPool(t *testing.T) {
-	enablePooling = false
-	testWriter(t)
-}
-
-func testWriter(t *testing.T) {
+func TestWriter(t *testing.T) {
 	// Start a bunch of workers who open and close writers like crazy.
 	errc := make(chan error, testGoroutines)
 	start := time.Now()
@@ -76,5 +51,5 @@ func testWriter(t *testing.T) {
 		}
 	}
 
-	t.Logf("total new connections made: %d", atomic.LoadUint64(&newConnections))
+	//t.Logf("total new connections made: %d", atomic.LoadUint64(&newConnections))
 }

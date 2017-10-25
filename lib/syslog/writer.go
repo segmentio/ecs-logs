@@ -11,29 +11,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"text/template"
 	"time"
 
-	"golang.org/x/net/proxy"
-
 	"github.com/segmentio/ecs-logs/lib"
+	"github.com/segmentio/ecs-logs/lib/syslog/pool"
+
+	"golang.org/x/net/proxy"
 )
 
 const DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
 
-// Global writer pool - channel style.
-// When NewWriter is called, a writer is taken from the pool if available.
-// Otherwise a new writer is created. Since each writer is configured
-// using the same environment variables, any writer can be used by any caller.
-// When writer.Close() is called, the writer is put back into the pool if
-// no errors have occured, or closed and discarded otherwise.
-var (
-	writerPool = make(chan *writer, 100) // 100 is arbitrary.
+const poolSize = 20
 
-	// Useful for testing
-	enablePooling  = false
-	newConnections uint64
+var (
+	connPoolsLock sync.Mutex
+	connPools     map[dialOpts]*pool.LimitedConnPool
 )
 
 type WriterConfig struct {
@@ -46,20 +40,18 @@ type WriterConfig struct {
 	SocksProxy string
 }
 
+type dialOpts struct {
+	network    string
+	address    string
+	tls        *tls.Config
+	socksProxy string
+}
+
+func init() {
+	connPools = make(map[dialOpts]*pool.LimitedConnPool)
+}
+
 func NewWriter(group, stream string) (lib.Writer, error) {
-	if enablePooling {
-		// Retrieve a writer from the global pool, if possible.
-		var w *writer
-		select {
-		case w = <-writerPool:
-			return w, nil
-		default:
-			// No writers immediately available; make a new one.
-		}
-	}
-
-	atomic.AddUint64(&newConnections, 1)
-
 	var c WriterConfig
 
 	if s := os.Getenv("SYSLOG_URL"); len(s) != 0 {
@@ -78,9 +70,8 @@ func NewWriter(group, stream string) (lib.Writer, error) {
 	return DialWriter(c)
 }
 
-func DialWriter(config WriterConfig) (w lib.Writer, err error) {
-	var netopts []string
-	var addropts []string
+func DialWriter(config WriterConfig) (lib.Writer, error) {
+	var netopts, addropts []string
 
 	if len(config.Network) != 0 {
 		netopts = []string{config.Network}
@@ -106,50 +97,62 @@ func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 		addropts = []string{"localhost:514"}
 	}
 
-	var backend io.WriteCloser
-
-connect:
+	// Try various fallbacks if no hints were given
+	var w *writer
+	var err error
 	for _, n := range netopts {
 		for _, a := range addropts {
-			if backend, err = dialWriter(n, a, config.TLS, config.SocksProxy); err == nil {
-				break connect
+			opts := dialOpts{
+				network:    n,
+				address:    a,
+				tls:        config.TLS,
+				socksProxy: config.SocksProxy,
+			}
+			if w, err = newWriter(opts, config); err == nil {
+				return w, nil
 			}
 		}
 	}
 
-	if err != nil {
-		return
-	}
-
-	w = newWriter(writerConfig{
-		backend:    backend,
-		template:   config.Template,
-		timeFormat: config.TimeFormat,
-		tag:        config.Tag,
-	})
-	return
+	return nil, err
 }
 
-type writerConfig struct {
-	backend    io.WriteCloser
-	template   string
-	timeFormat string
-	tag        string
+type writer struct {
+	// configuration
+	timefmt string
+	tpl     *template.Template
+	tag     string
+
+	// connection state
+	pool    *pool.LimitedConnPool
+	backend io.WriteCloser
+	dead    bool
+
+	// buffered i/o
+	buf   bytes.Buffer
+	out   func(*writer, message) error
+	flush func() error
 }
 
-func newWriter(config writerConfig) *writer {
+func newWriter(opts dialOpts, cfg WriterConfig) (*writer, error) {
 	var out func(*writer, message) error
 	var flush func() error
 
-	if len(config.timeFormat) == 0 {
-		config.timeFormat = time.Stamp
+	if cfg.TimeFormat == "" {
+		cfg.TimeFormat = time.Stamp
 	}
 
-	if len(config.template) == 0 {
-		config.template = DefaultTemplate
+	if cfg.Template == "" {
+		cfg.Template = DefaultTemplate
 	}
 
-	switch b := config.backend.(type) {
+	p, err := getPool(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	backend := p.Get()
+	switch b := backend.(type) {
 	case bufferedWriter:
 		out, flush = (*writer).directWrite, b.Flush
 	default:
@@ -157,11 +160,39 @@ func newWriter(config writerConfig) *writer {
 	}
 
 	return &writer{
-		writerConfig: config,
-		flush:        flush,
-		out:          out,
-		tpl:          newWriterTemplate(config.template),
+		timefmt: cfg.TimeFormat,
+		tpl:     newWriterTemplate(cfg.Template),
+		tag:     cfg.Tag,
+
+		backend: backend,
+		pool:    p,
+
+		flush: flush,
+		out:   out,
+	}, nil
+}
+
+// getPool returns a connection pool for the given configuration.
+func getPool(opts dialOpts) (*pool.LimitedConnPool, error) {
+	connPoolsLock.Lock()
+	defer connPoolsLock.Unlock()
+
+	p, ok := connPools[opts]
+	if !ok {
+		// dial closes over opts
+		dial := func() (io.WriteCloser, error) {
+			//fmt.Fprintln(os.Stderr, "dialing new connection")
+			return dialWriter(opts.network, opts.address, opts.tls, opts.socksProxy)
+		}
+		var err error
+		p, err = pool.New(dial, poolSize)
+		if err != nil {
+			return nil, err
+		}
+		connPools[opts] = p
 	}
+
+	return p, nil
 }
 
 func newWriterTemplate(format string) *template.Template {
@@ -173,33 +204,8 @@ func newWriterTemplate(format string) *template.Template {
 	return t
 }
 
-type writer struct {
-	writerConfig
-	buf   bytes.Buffer
-	tpl   *template.Template
-	out   func(*writer, message) error
-	flush func() error
-
-	// Global writer pool state
-	dead bool
-}
-
 func (w *writer) Close() (err error) {
-	if w.dead {
-		return w.backend.Close()
-	}
-
-	if enablePooling {
-		// w is still fine, put it back in the pool for reuse.
-		// If the pool is full, discard this writer.
-		select {
-		case writerPool <- w:
-			return nil
-		default:
-		}
-	}
-
-	return w.backend.Close()
+	return w.pool.Put(w.backend, w.dead)
 }
 
 func (w *writer) WriteMessageBatch(batch lib.MessageBatch) error {
@@ -236,7 +242,7 @@ func (w *writer) write(msg lib.Message) (err error) {
 		MSGID:     msg.Event.Info.ID,
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
-		TIMESTAMP: msg.Event.Time.Format(w.timeFormat),
+		TIMESTAMP: msg.Event.Time.Format(w.timefmt),
 		TAG:       w.tag,
 	}
 
