@@ -20,7 +20,10 @@ type LimitedConnPool struct {
 // NewLimited returns a new LimitedConnPool with the given size limit and dial function.
 func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool, error) {
 	// Tentative first try - if this doesn't work, we assume it never will
-	// and fail to initialize.
+	// and fail to initialize. This is admittedly not great, but we rely on
+	// unreachable addresses failing immediately in our syslog package, which,
+	// if no address is specified, attempts a number of fallback addresses
+	// until one succeeds.
 	w, err := dial()
 	if err != nil {
 		return nil, err
