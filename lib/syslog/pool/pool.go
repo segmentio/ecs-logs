@@ -38,6 +38,17 @@ func (w *conn) Close() error {
 	return w.pool.put(w)
 }
 
+type bufferedWriter interface {
+	Flush() error
+}
+
+func (w *conn) Flush() error {
+	if t, ok := w.conn.(bufferedWriter); ok {
+		return t.Flush()
+	}
+	return nil
+}
+
 // NewLimited returns a new LimitedConnPool with the given size limit and dial function.
 func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool, error) {
 	// Tentative first try - if this doesn't work, we assume it never will
@@ -109,9 +120,8 @@ func (p *LimitedConnPool) Close() {
 	close(p.err)
 }
 
-// put returns a connection to the pool. If dead is true, the
-// connection is removed from the pool so that a new connection
-// can be dialed.
+// put returns a connection to the pool. If the connection is dead,
+// it is removed from the pool so that a new connection can be dialed.
 func (p *LimitedConnPool) put(w *conn) error {
 	if w.dead {
 		<-p.live               // decrement the live count
