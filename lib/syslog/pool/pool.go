@@ -2,6 +2,9 @@ package pool
 
 import (
 	"io"
+	"time"
+
+	"github.com/jpillora/backoff"
 )
 
 // A LimitedConnPool is a connection pool, with the property that
@@ -79,6 +82,13 @@ func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool
 
 	// keep p.conns populated
 	go func() {
+		// TODO: it would be nice if the client could control
+		// backoff, but doing it here seems sufficient for now.
+		backoff := &backoff.Backoff{
+			Factor: 2,
+			Min:    10 * time.Millisecond,
+			Max:    10 * time.Second,
+		}
 		for range p.signal {
 			for len(p.live) < size {
 				w, err := dial()
@@ -86,10 +96,12 @@ func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool
 					select {
 					case p.err <- err:
 					default:
-						// error channel is full, drop this error
+						// error channel is full, drop this error.
 					}
+					time.Sleep(backoff.Duration())
 					continue
 				}
+				backoff.Reset()
 				p.conns <- &conn{
 					conn: w,
 					pool: &p,
