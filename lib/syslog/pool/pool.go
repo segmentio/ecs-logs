@@ -8,13 +8,34 @@ import (
 // the total number of live connections is limited to the size
 // parameter passed to NewLimited. In order to make this guarantee,
 // we assume that all new connections are introduced by calls to the
-// Get method, and returned to the pool by the Put method (whether
-// or not the connection is dead)
+// Get method, and returned to the pool by calls to Close().
 type LimitedConnPool struct {
-	conns  chan io.WriteCloser // Available connections in the pool
-	live   chan struct{}       // Keep a count of living connections (in our hands, or the client)
-	signal chan struct{}       // Used to wake up the connection producer
-	err    chan error          // Send dial errors back to the client
+	conns  chan *conn    // Available connections in the pool
+	live   chan struct{} // Keep a count of living connections (in our hands, or the client)
+	signal chan struct{} // Used to wake up the connection producer
+	err    chan error    // Send dial errors back to the client
+}
+
+// conn wraps an io.WriteCloser, marking the connection as dead
+// on any write error and changing the meaning of Close.
+// Closing a conn calls the io.WriteCloser's Close method if
+// the conn is marked dead, or returns it to the pool otherwise.
+type conn struct {
+	conn io.WriteCloser
+	pool *LimitedConnPool
+	dead bool
+}
+
+func (w *conn) Write(p []byte) (int, error) {
+	n, err := w.conn.Write(p)
+	if err != nil {
+		w.dead = true
+	}
+	return n, err
+}
+
+func (w *conn) Close() error {
+	return w.pool.put(w)
 }
 
 // NewLimited returns a new LimitedConnPool with the given size limit and dial function.
@@ -30,7 +51,7 @@ func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool
 	}
 
 	p := LimitedConnPool{
-		conns:  make(chan io.WriteCloser, size),
+		conns:  make(chan *conn, size),
 		live:   make(chan struct{}, size),
 		signal: make(chan struct{}),
 
@@ -39,7 +60,10 @@ func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool
 		err: make(chan error, size),
 	}
 
-	p.conns <- w
+	p.conns <- &conn{
+		conn: w,
+		pool: &p,
+	}
 	p.live <- struct{}{}
 
 	// keep p.conns populated
@@ -55,7 +79,10 @@ func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool
 					}
 					continue
 				}
-				p.conns <- w
+				p.conns <- &conn{
+					conn: w,
+					pool: &p,
+				}
 				p.live <- struct{}{}
 			}
 		}
@@ -67,14 +94,29 @@ func NewLimited(size int, dial func() (io.WriteCloser, error)) (*LimitedConnPool
 	return &p, nil
 }
 
-// Put returns a connection to the pool. If dead is true, the
+func (p *LimitedConnPool) Close() {
+	// Important to close this first, so the dialer doesn't loop again.
+	close(p.signal)
+
+	// Close all the underlying connections
+	close(p.conns)
+	for c := range p.conns {
+		c.conn.Close()
+	}
+
+	// Close the error channel, allowing any client error handling
+	// range loops to finish
+	close(p.err)
+}
+
+// put returns a connection to the pool. If dead is true, the
 // connection is removed from the pool so that a new connection
 // can be dialed.
-func (p *LimitedConnPool) Put(w io.WriteCloser, dead bool) error {
-	if dead {
+func (p *LimitedConnPool) put(w *conn) error {
+	if w.dead {
 		<-p.live               // decrement the live count
 		p.signal <- struct{}{} // signal the connection dialer
-		return w.Close()
+		return w.conn.Close()
 	}
 	p.conns <- w
 	return nil
@@ -83,6 +125,8 @@ func (p *LimitedConnPool) Put(w io.WriteCloser, dead bool) error {
 // Get retrieves a connection from the pool, if available.
 // A new connection will only be dialed if the total number
 // of live connections is below the configured size limit.
+// Closing the returned io.WriteCloser automatically returns
+// the connection to the pool.
 func (p *LimitedConnPool) Get() io.WriteCloser {
 	return <-p.conns
 }

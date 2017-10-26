@@ -19,25 +19,32 @@ func TestWriter(t *testing.T) {
 	for i := 0; i < testGoroutines; i++ {
 		go func(i int) {
 			for {
-				d := time.Duration(rand.Intn(10)) * time.Millisecond
-				time.Sleep(d)
+				time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 				w, err := NewWriter("foo", "bar")
 				if err != nil {
 					errc <- err
 				}
-				err = w.WriteMessage(lib.Message{
-					Group:  "foo",
-					Stream: "bar",
-					Event:  ecslogs.MakeEvent(ecslogs.INFO, fmt.Sprintf("slept %v", d)),
-				})
-				if err != nil {
-					errc <- err
+				for j := 0; j < rand.Intn(10); j++ {
+					d := time.Duration(rand.Intn(30)) * time.Millisecond
+					time.Sleep(d)
+					err = w.WriteMessage(lib.Message{
+						Group:  "foo",
+						Stream: "bar",
+						Event:  ecslogs.MakeEvent(ecslogs.INFO, fmt.Sprintf("slept %v", d)),
+					})
+					if err != nil {
+						errc <- err
+					}
+
 				}
+
 				if err := w.Close(); err != nil {
 					errc <- err
 				}
 
-				if time.Since(start) >= 10*time.Second {
+				if time.Since(start) >= 5*time.Second {
+					// signal to the main goroutine that we
+					// are exiting with no errors.
 					errc <- nil
 					return
 				}
@@ -50,6 +57,4 @@ func TestWriter(t *testing.T) {
 			t.Error(err)
 		}
 	}
-
-	//t.Logf("total new connections made: %d", atomic.LoadUint64(&newConnections))
 }

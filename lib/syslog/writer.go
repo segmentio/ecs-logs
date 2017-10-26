@@ -136,7 +136,6 @@ type writer struct {
 	// connection state
 	pool    *pool.LimitedConnPool
 	backend io.WriteCloser
-	dead    bool
 
 	// buffered i/o
 	buf   bytes.Buffer
@@ -207,7 +206,6 @@ func getPool(opts dialOpts) (*pool.LimitedConnPool, error) {
 	if !ok {
 		// dial closes over opts
 		dial := func() (io.WriteCloser, error) {
-			//fmt.Fprintln(os.Stderr, "dialing new connection")
 			return dialWriter(opts.network, opts.address, opts.tls, opts.socksProxy)
 		}
 		var err error
@@ -231,18 +229,16 @@ func newWriterTemplate(format string) *template.Template {
 }
 
 func (w *writer) Close() (err error) {
-	return w.pool.Put(w.backend, w.dead)
+	return w.backend.Close()
 }
 
 func (w *writer) WriteMessageBatch(batch lib.MessageBatch) error {
 	for _, msg := range batch {
 		if err := w.write(msg); err != nil {
-			w.dead = true
 			return err
 		}
 	}
 	if err := w.flush(); err != nil {
-		w.dead = true
 		return err
 	}
 	return nil
@@ -250,11 +246,9 @@ func (w *writer) WriteMessageBatch(batch lib.MessageBatch) error {
 
 func (w *writer) WriteMessage(msg lib.Message) error {
 	if err := w.write(msg); err != nil {
-		w.dead = true
 		return err
 	}
 	if err := w.flush(); err != nil {
-		w.dead = true
 		return err
 	}
 
