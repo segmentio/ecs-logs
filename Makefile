@@ -33,10 +33,11 @@ upload_deb: $(DEBFILE)
 	package_cloud push segment/infra/ubuntu/xenial $(DEBFILE)
 
 image:
-	docker build -t $(DOCKER_TAG) .
+	docker build -t $(DOCKER_TAG) -t segment/ecs-logs:latest .
 
 push_image:
 	docker push $(DOCKER_TAG)
+	docker push segment/ecs-logs:latest
 
 clean:
 	-rm -f bin/* *.deb
