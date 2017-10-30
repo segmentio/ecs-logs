@@ -165,6 +165,12 @@
 			"revisionTime": "2016-02-02T18:50:14Z"
 		},
 		{
+			"checksumSHA1": "qekNouYjoxRxaEZeD6GtySY1wlM=",
+			"path": "github.com/jpillora/backoff",
+			"revision": "8eab2debe79d12b7bd3d10653910df25fa9552ba",
+			"revisionTime": "2017-09-18T00:21:02Z"
+		},
+		{
 			"checksumSHA1": "sLM5tRtL85eSdaxblyygnEB9kUI=",
 			"path": "github.com/segmentio/ecs-logs-go",
 			"revision": "2f43d53e6e42c8b779b03e4fb7c1838a9c57c0b6",

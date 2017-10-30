@@ -295,7 +295,7 @@ func read(r reader, c chan<- lib.Message, counter *int32, hostname string) {
 	}
 }
 
-func write(dest destination, group string, stream string, batch lib.MessageBatch, join *sync.WaitGroup) {
+func write(dest destination, group, stream string, batch lib.MessageBatch, join *sync.WaitGroup) {
 	defer join.Done()
 
 	var writer lib.Writer

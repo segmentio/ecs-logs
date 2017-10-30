@@ -11,16 +11,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
-	"golang.org/x/net/proxy"
-
 	"github.com/segmentio/ecs-logs/lib"
+	"github.com/segmentio/ecs-logs/lib/syslog/pool"
+
+	"golang.org/x/net/proxy"
 )
 
-const (
-	DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
+const DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
+
+const poolSize = 20
+
+var (
+	connPoolsLock sync.Mutex
+	connPools     map[dialOpts]*pool.LimitedConnPool
 )
 
 type WriterConfig struct {
@@ -33,15 +40,24 @@ type WriterConfig struct {
 	SocksProxy string
 }
 
-func NewWriter(group string, stream string) (w lib.Writer, err error) {
-	var c WriterConfig
-	var s string
-	var u *url.URL
+type dialOpts struct {
+	network    string
+	address    string
+	tls        *tls.Config
+	socksProxy string
+}
 
-	if s = os.Getenv("SYSLOG_URL"); len(s) != 0 {
-		if u, err = url.Parse(s); err != nil {
-			err = fmt.Errorf("invalid syslog URL: %s", err)
-			return
+func init() {
+	connPools = make(map[dialOpts]*pool.LimitedConnPool)
+}
+
+func NewWriter(group, stream string) (lib.Writer, error) {
+	var c WriterConfig
+
+	if s := os.Getenv("SYSLOG_URL"); len(s) != 0 {
+		u, err := url.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid syslog URL: %s", err)
 		}
 
 		c.Network = u.Scheme
@@ -54,10 +70,8 @@ func NewWriter(group string, stream string) (w lib.Writer, err error) {
 	return DialWriter(c)
 }
 
-func DialWriter(config WriterConfig) (w lib.Writer, err error) {
-	var netopts []string
-	var addropts []string
-	var backend io.Writer
+func DialWriter(config WriterConfig) (lib.Writer, error) {
+	var netopts, addropts []string
 
 	if len(config.Network) != 0 {
 		netopts = []string{config.Network}
@@ -83,60 +97,126 @@ func DialWriter(config WriterConfig) (w lib.Writer, err error) {
 		addropts = []string{"localhost:514"}
 	}
 
-connect:
+	// Try various fallbacks if no hints were given
+	var w *writer
+	var err error
 	for _, n := range netopts {
 		for _, a := range addropts {
-			if backend, err = dialWriter(n, a, config.TLS, config.SocksProxy); err == nil {
-				break connect
+			opts := dialOpts{
+				network:    n,
+				address:    a,
+				tls:        config.TLS,
+				socksProxy: config.SocksProxy,
+			}
+			if w, err = newWriter(opts, config); err == nil {
+				return w, nil
 			}
 		}
 	}
 
-	if err != nil {
-		return
+	return nil, err
+}
+
+type multiError []error
+
+func (m multiError) Error() string {
+	s := "encountered errors:\n"
+	for err := range m {
+		s += fmt.Sprintf("\t%v\n", err)
 	}
-
-	w = newWriter(writerConfig{
-		backend:    backend,
-		template:   config.Template,
-		timeFormat: config.TimeFormat,
-		tag:        config.Tag,
-	})
-	return
+	return s
 }
 
-type writerConfig struct {
-	backend    io.Writer
-	template   string
-	timeFormat string
-	tag        string
+type writer struct {
+	// configuration
+	timefmt string
+	tpl     *template.Template
+	tag     string
+
+	// connection state
+	pool    *pool.LimitedConnPool
+	backend io.WriteCloser
+
+	// buffered i/o
+	buf   bytes.Buffer
+	out   func(*writer, message) error
+	flush func() error
 }
 
-func newWriter(config writerConfig) *writer {
+func newWriter(opts dialOpts, cfg WriterConfig) (*writer, error) {
 	var out func(*writer, message) error
 	var flush func() error
 
-	if len(config.timeFormat) == 0 {
-		config.timeFormat = time.Stamp
+	if cfg.TimeFormat == "" {
+		cfg.TimeFormat = time.Stamp
 	}
 
-	if len(config.template) == 0 {
-		config.template = DefaultTemplate
+	if cfg.Template == "" {
+		cfg.Template = DefaultTemplate
 	}
 
-	switch b := config.backend.(type) {
+	p, err := getPool(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	backend := p.Get()
+	switch b := backend.(type) {
 	case bufferedWriter:
 		out, flush = (*writer).directWrite, b.Flush
 	default:
 		out, flush = (*writer).bufferedWrite, func() error { return nil }
 	}
 
-	return &writer{
-		writerConfig: config,
-		flush:        flush,
-		out:          out,
-		tpl:          newWriterTemplate(config.template),
+	// Check for errors reported by the pool when dialing
+	errc := p.Errors()
+	var errs multiError
+loop:
+	for {
+		select {
+		case err := <-errc:
+			errs = append(errs, err)
+		default:
+			break loop
+		}
 	}
+	if errs != nil {
+		return nil, errs
+	}
+
+	return &writer{
+		timefmt: cfg.TimeFormat,
+		tpl:     newWriterTemplate(cfg.Template),
+		tag:     cfg.Tag,
+
+		backend: backend,
+		pool:    p,
+
+		flush: flush,
+		out:   out,
+	}, nil
+}
+
+// getPool returns a connection pool for the given configuration.
+func getPool(opts dialOpts) (*pool.LimitedConnPool, error) {
+	connPoolsLock.Lock()
+	defer connPoolsLock.Unlock()
+
+	p, ok := connPools[opts]
+	if !ok {
+		// dial closes over opts
+		dial := func() (io.WriteCloser, error) {
+			return dialWriter(opts.network, opts.address, opts.tls, opts.socksProxy)
+		}
+		var err error
+		p, err = pool.NewLimited(poolSize, dial)
+		if err != nil {
+			return nil, err
+		}
+		connPools[opts] = p
+	}
+
+	return p, nil
 }
 
 func newWriterTemplate(format string) *template.Template {
@@ -148,35 +228,31 @@ func newWriterTemplate(format string) *template.Template {
 	return t
 }
 
-type writer struct {
-	writerConfig
-	buf   bytes.Buffer
-	tpl   *template.Template
-	out   func(*writer, message) error
-	flush func() error
-}
-
 func (w *writer) Close() (err error) {
-	if c, ok := w.backend.(io.Closer); ok {
-		err = c.Close()
-	}
-	return
+	return w.backend.Close()
 }
 
-func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
+func (w *writer) WriteMessageBatch(batch lib.MessageBatch) error {
 	for _, msg := range batch {
-		if err = w.write(msg); err != nil {
-			return
+		if err := w.write(msg); err != nil {
+			return err
 		}
 	}
-	return w.flush()
+	if err := w.flush(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (w *writer) WriteMessage(msg lib.Message) (err error) {
-	if err = w.write(msg); err == nil {
-		err = w.flush()
+func (w *writer) WriteMessage(msg lib.Message) error {
+	if err := w.write(msg); err != nil {
+		return err
 	}
-	return
+	if err := w.flush(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (w *writer) write(msg lib.Message) (err error) {
@@ -186,7 +262,7 @@ func (w *writer) write(msg lib.Message) (err error) {
 		MSGID:     msg.Event.Info.ID,
 		GROUP:     msg.Group,
 		STREAM:    msg.Stream,
-		TIMESTAMP: msg.Event.Time.Format(w.timeFormat),
+		TIMESTAMP: msg.Event.Time.Format(w.timefmt),
 		TAG:       w.tag,
 	}
 
@@ -244,7 +320,7 @@ func (c bufferedConn) Close() error                { return c.conn.Close() }
 func (c bufferedConn) Flush() error                { return c.buf.Flush() }
 func (c bufferedConn) Write(b []byte) (int, error) { return c.buf.Write(b) }
 
-func dialWriter(network string, address string, config *tls.Config, socksProxy string) (w io.Writer, err error) {
+func dialWriter(network, address string, config *tls.Config, socksProxy string) (w io.WriteCloser, err error) {
 	var conn, rawConn net.Conn
 	var dial func(string, string) (net.Conn, error)
 	var socksDialer proxy.Dialer
