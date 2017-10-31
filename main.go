@@ -67,7 +67,7 @@ func main() {
 	flag.IntVar(&maxCount, "max-batch-size", 10000, "The maximum number of messages in a batch")
 	flag.DurationVar(&flushTimeout, "flush-timeout", 5*time.Second, "How often messages will be flushed")
 	flag.DurationVar(&cacheTimeout, "cache-timeout", 5*time.Minute, "How to wait before clearing unused internal cache")
-	flag.StringVar(&profileAddr, "pprof-addr", "localhost:8080", "Address to serve profile information")
+	flag.StringVar(&profileAddr, "pprof-addr", "", "Address to serve profile information")
 	flag.Parse()
 
 	logger := &lib.LogHandler{
