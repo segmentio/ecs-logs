@@ -99,5 +99,47 @@ func TestGetPool(t *testing.T) {
 
 	if pool1 != pool2 {
 		t.Error("pools did not match")
+  }
+}
+
+func BenchmarkNewWriter(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		w, err := NewWriter("foo", "bar")
+		if err != nil {
+			b.Fatal(err)
+		}
+		for j := 0; j < 10; j++ {
+			err := w.WriteMessage(lib.Message{
+				Group:  "foo",
+				Stream: "bar",
+				Event:  ecslogs.MakeEvent(ecslogs.INFO, "test"),
+			})
+			if err != nil {
+				b.Error(err)
+			}
+		}
+		if err := w.Close(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkWrite(b *testing.B) {
+	w, err := NewWriter("foo", "bar")
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		err := w.WriteMessage(lib.Message{
+			Group:  "foo",
+			Stream: "bar",
+			Event:  ecslogs.MakeEvent(ecslogs.INFO, "test"),
+		})
+		if err != nil {
+			b.Error(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		b.Fatal(err)
 	}
 }

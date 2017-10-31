@@ -13,6 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/multi"
@@ -52,6 +55,7 @@ func main() {
 	var maxCount int
 	var flushTimeout time.Duration
 	var cacheTimeout time.Duration
+	var profileAddr string
 
 	hostname, _ = os.Hostname()
 
@@ -63,6 +67,7 @@ func main() {
 	flag.IntVar(&maxCount, "max-batch-size", 10000, "The maximum number of messages in a batch")
 	flag.DurationVar(&flushTimeout, "flush-timeout", 5*time.Second, "How often messages will be flushed")
 	flag.DurationVar(&cacheTimeout, "cache-timeout", 5*time.Minute, "How to wait before clearing unused internal cache")
+	flag.StringVar(&profileAddr, "pprof-addr", "", "Address to serve profile information")
 	flag.Parse()
 
 	logger := &lib.LogHandler{
@@ -73,6 +78,15 @@ func main() {
 	}
 	log.SetLevel(log.Level(level))
 	log.SetHandler(multi.New(cli.New(os.Stderr), logger))
+
+	// serve profiles if address is configured
+	if profileAddr != "" {
+		go func() {
+			if err := http.ListenAndServe(profileAddr, nil); err != nil {
+				log.Errorf("pprof: %v", err)
+			}
+		}()
+	}
 
 	var store = lib.NewStore()
 	var sources []source
