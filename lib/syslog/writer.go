@@ -53,7 +53,7 @@ type dialOpts struct {
 // so we are assuming that all otherwise identical dialOpts
 // have the same TLS config.
 func (o *dialOpts) key() string {
-	return o.network + o.address + o.socksProxy
+	return fmt.Sprintf("%s:%s:%s", o.network, o.address, o.socksProxy)
 }
 
 func init() {
