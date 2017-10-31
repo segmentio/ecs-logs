@@ -1,8 +1,11 @@
 package syslog
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -57,6 +60,46 @@ func TestWriter(t *testing.T) {
 			t.Error(err)
 		}
 	}
+}
+
+func TestGetPool(t *testing.T) {
+	s := os.Getenv("SYSLOG_URL")
+	u, err := url.Parse(s)
+	if err != nil {
+		t.Fatal("SYSLOG_URL must be set")
+	}
+
+	opts := dialOpts{
+		network: u.Scheme,
+		address: u.Host,
+		tls: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		socksProxy: "",
+	}
+	pool1, err := getPool(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool1.Close()
+
+	// Create a new dialOpts identical to the old one
+	opts = dialOpts{
+		network: u.Scheme,
+		address: u.Host,
+		tls: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		socksProxy: "",
+	}
+	pool2, err := getPool(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pool1 != pool2 {
+		t.Error("pools did not match")
+  }
 }
 
 func BenchmarkNewWriter(b *testing.B) {
