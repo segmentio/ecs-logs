@@ -82,7 +82,7 @@ func main() {
 	// serve profiles if address is configured
 	if profileAddr != "" {
 		go func() {
-			if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+			if err := http.ListenAndServe(profileAddr, nil); err != nil {
 				log.Errorf("pprof: %v", err)
 			}
 		}()
