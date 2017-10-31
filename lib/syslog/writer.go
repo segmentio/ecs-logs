@@ -27,7 +27,7 @@ const poolSize = 20
 
 var (
 	connPoolsLock sync.Mutex
-	connPools     map[dialOpts]*pool.LimitedConnPool
+	connPools     map[string]*pool.LimitedConnPool
 )
 
 type WriterConfig struct {
@@ -40,6 +40,8 @@ type WriterConfig struct {
 	SocksProxy string
 }
 
+// dialOpts is used to determine whether writers can share
+// the same connection pool.
 type dialOpts struct {
 	network    string
 	address    string
@@ -47,8 +49,15 @@ type dialOpts struct {
 	socksProxy string
 }
 
+// BUG: the generated key does not capture the TLS config,
+// so we are assuming that all otherwise identical dialOpts
+// have the same TLS config.
+func (o *dialOpts) key() string {
+	return o.network + o.address + o.socksProxy
+}
+
 func init() {
-	connPools = make(map[dialOpts]*pool.LimitedConnPool)
+	connPools = make(map[string]*pool.LimitedConnPool)
 }
 
 func NewWriter(group, stream string) (lib.Writer, error) {
@@ -202,7 +211,8 @@ func getPool(opts dialOpts) (*pool.LimitedConnPool, error) {
 	connPoolsLock.Lock()
 	defer connPoolsLock.Unlock()
 
-	p, ok := connPools[opts]
+	key := opts.key()
+	p, ok := connPools[key]
 	if !ok {
 		// dial closes over opts
 		dial := func() (io.WriteCloser, error) {
@@ -213,7 +223,7 @@ func getPool(opts dialOpts) (*pool.LimitedConnPool, error) {
 		if err != nil {
 			return nil, err
 		}
-		connPools[opts] = p
+		connPools[key] = p
 	}
 
 	return p, nil
