@@ -69,12 +69,9 @@ func TestGetPool(t *testing.T) {
 		t.Fatal("SYSLOG_URL must be set")
 	}
 
-	network := u.Scheme
-	address := u.Host
-
 	opts := dialOpts{
-		network: network,
-		address: address,
+		network: u.Scheme,
+		address: u.Host,
 		tls: &tls.Config{
 			InsecureSkipVerify: true,
 		},
@@ -86,10 +83,10 @@ func TestGetPool(t *testing.T) {
 	}
 	defer pool1.Close()
 
-	// make a new dialOpts identical to the old one
+	// Create a new dialOpts identical to the old one
 	opts = dialOpts{
-		network: network,
-		address: address,
+		network: u.Scheme,
+		address: u.Host,
 		tls: &tls.Config{
 			InsecureSkipVerify: true,
 		},
