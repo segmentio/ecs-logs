@@ -100,7 +100,10 @@ func (r *reader) getMessage() (msg lib.Message, ok bool, err error) {
 		d.UseNumber()
 
 		if d.Decode(&msg.Event) != nil {
-			msg.Event.Message = s
+			if json.Unmarshal([]byte(s), &msg.JSON) != nil {
+				msg.JSON = make(map[string]interface{})
+				msg.JSON["msg"] = s
+			}
 		}
 	}
 
