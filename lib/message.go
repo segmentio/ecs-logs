@@ -9,14 +9,23 @@ import (
 )
 
 type Message struct {
-	Group  string        `json:"group,omitempty"`
-	Stream string        `json:"stream,omitempty"`
-	Event  ecslogs.Event `json:"event,omitempty"`
+	Group  string                 `json:"group,omitempty"`
+	Stream string                 `json:"stream,omitempty"`
+	Event  ecslogs.Event          `json:"event,omitempty"`
+	JSON   map[string]interface{} `json:"json,omitempty"`
 }
 
 func (m Message) Bytes() []byte {
 	b, _ := json.Marshal(m)
 	return b
+}
+
+func (m Message) GoodEggsEventString() string {
+	if m.JSON != nil {
+		b, _ := json.Marshal(m.JSON)
+		return string(b)
+	}
+	return m.Event.String()
 }
 
 func (m Message) String() string {

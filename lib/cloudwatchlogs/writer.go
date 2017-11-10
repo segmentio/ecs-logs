@@ -37,7 +37,7 @@ func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
 
 	for i, msg := range batch {
 		events[i] = &cloudwatchlogs.InputLogEvent{
-			Message:   aws.String(msg.Event.String()),
+			Message:   aws.String(msg.GoodEggsEventString()),
 			Timestamp: aws.Int64(aws.TimeUnixMilli(msg.Event.Time)),
 		}
 	}

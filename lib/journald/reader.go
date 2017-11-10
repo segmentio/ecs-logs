@@ -96,12 +96,32 @@ func (r *reader) getMessage() (msg lib.Message, ok bool, err error) {
 	msg.Stream = sanitizeStreamName(msg.Stream)
 
 	if s := r.getString("MESSAGE"); len(s) != 0 {
-		d := json.NewDecoder(strings.NewReader(s))
-		d.UseNumber()
-
-		if d.Decode(&msg.Event) != nil {
-			msg.Event.Message = s
+		// attempt to parse the line as JSON
+		if json.Unmarshal([]byte(s), &msg.JSON) != nil {
+			// if it isn't JSON, initialize an empty object and set it as the `msg` property
+			msg.JSON = make(map[string]interface{})
+			msg.JSON["msg"] = s
 		}
+
+		// ensure it has a `time` property at the root
+		if msg.JSON["time"] == nil {
+			msg.JSON["time"] = r.getTime()
+		}
+
+		// build up metadata object
+		metadata := make(map[string]interface{})
+
+		metadata["source"] = "stdout"
+		if r.getPriority() <= 4 {
+			metadata["source"] = "stderr"
+		}
+		metadata["host"] = r.getString("CONTAINER_ID")
+		metadata["docker_id"] = r.getString("CONTAINER_ID_FULL")
+		metadata["docker_name"] = r.getString("CONTAINER_NAME")
+		metadata["ecs_task"] = r.getString("CONTAINER_TASK_UUID")
+
+		// assign metadata to the `logspout` property
+		msg.JSON["logspout"] = metadata
 	}
 
 	if msg.Event.Level == ecslogs.NONE {
