@@ -130,7 +130,7 @@ type multiError []error
 
 func (m multiError) Error() string {
 	s := "encountered errors:\n"
-	for err := range m {
+	for _, err := range m {
 		s += fmt.Sprintf("\t%v\n", err)
 	}
 	return s
