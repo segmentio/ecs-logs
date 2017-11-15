@@ -29,10 +29,8 @@ func (w *writer) WriteMessage(m lib.Message) error {
 		PartitionKey: aws.String(fmt.Sprintf("%s:%s", w.group, w.stream)),
 		StreamName:   aws.String("logs"),
 	}
-	if _, err := client.PutRecord(&req); err != nil {
-		return err
-	}
-	return nil
+	_, err := client.PutRecord(&req)
+	return err
 }
 
 func (w *writer) WriteMessageBatch(m lib.MessageBatch) error {
@@ -48,10 +46,8 @@ func (w *writer) WriteMessageBatch(m lib.MessageBatch) error {
 		Records:    records,
 		StreamName: aws.String("logs"),
 	}
-	if _, err := client.PutRecords(&req); err != nil {
-		return err
-	}
-	return nil
+	_, err := client.PutRecords(&req)
+	return err
 }
 
 func (w *writer) Close() error {
@@ -110,16 +106,12 @@ func createStream() error {
 			StreamName: aws.String("logs"),
 		}
 		if _, err := client.DescribeStream(&req); err == nil {
-			errs = nil
-			break
+			return nil
 		} else {
 			errs = append(errs, err)
 		}
 
 		time.Sleep(500 * time.Millisecond)
 	}
-	if errs != nil {
-		return errs
-	}
-	return nil
+	return errs
 }
