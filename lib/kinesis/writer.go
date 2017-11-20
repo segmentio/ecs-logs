@@ -1,10 +1,7 @@
 package kinesis
 
 import (
-	"fmt"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -13,21 +10,19 @@ import (
 	"github.com/segmentio/ecs-logs/lib"
 )
 
-var (
-	client *kinesis.Kinesis
-	once   sync.Once
-)
+// Safe for concurrent use
+var client *kinesis.Kinesis
 
 type writer struct {
-	group  string
-	stream string
+	group  string // log group, i.e. service name.
+	stream string // log stream, i.e. host name.
 }
 
 func (w *writer) WriteMessage(m lib.Message) error {
 	req := kinesis.PutRecordInput{
 		Data:         m.Bytes(),
-		PartitionKey: aws.String(fmt.Sprintf("%s:%s", w.group, w.stream)),
-		StreamName:   aws.String("logs"),
+		PartitionKey: aws.String(w.stream),
+		StreamName:   aws.String(w.group),
 	}
 	_, err := client.PutRecord(&req)
 	return err
@@ -35,16 +30,15 @@ func (w *writer) WriteMessage(m lib.Message) error {
 
 func (w *writer) WriteMessageBatch(m lib.MessageBatch) error {
 	records := make([]*kinesis.PutRecordsRequestEntry, m.Len())
-	key := fmt.Sprintf("%s:%s", w.group, w.stream)
 	for i, s := range m {
 		records[i] = &kinesis.PutRecordsRequestEntry{
 			Data:         s.Bytes(),
-			PartitionKey: aws.String(key),
+			PartitionKey: aws.String(w.stream),
 		}
 	}
 	req := kinesis.PutRecordsInput{
 		Records:    records,
-		StreamName: aws.String("logs"),
+		StreamName: aws.String(w.group),
 	}
 	_, err := client.PutRecords(&req)
 	return err
@@ -55,19 +49,18 @@ func (w *writer) Close() error {
 }
 
 func NewWriter(group, stream string) (lib.Writer, error) {
-	var err error
-	once.Do(func() {
+	if client == nil {
 		var s *session.Session
-		s, err = session.NewSession(&aws.Config{
+		s, err := session.NewSession(&aws.Config{
 			Region: aws.String(os.Getenv("KINESIS_REGION")),
 		})
 		if err != nil {
-			return
+			return nil, err
 		}
 		client = kinesis.New(s)
-		err = createStream()
-	})
-	if err != nil {
+	}
+
+	if err := checkStream(group); err != nil {
 		return nil, err
 	}
 
@@ -78,40 +71,10 @@ func NewWriter(group, stream string) (lib.Writer, error) {
 	return &w, nil
 }
 
-type multiError []error
-
-func (m multiError) Error() string {
-	s := "error creating stream:\n"
-	for _, err := range m {
-		s += fmt.Sprintf("\t%v\n", err)
+func checkStream(group string) error {
+	req := kinesis.DescribeStreamInput{
+		StreamName: aws.String(group),
 	}
-	return s
-}
-
-// client.CreateStream doesn't block until the stream
-// is created, so we need to do a little dance in order
-// to be sure it's available.
-func createStream() error {
-	req := kinesis.CreateStreamInput{
-		ShardCount: aws.Int64(1),
-		StreamName: aws.String("logs"),
-	}
-	var errs multiError
-	if _, err := client.CreateStream(&req); err != nil {
-		errs = append(errs, err)
-	}
-
-	for i := 0; i < 3; i++ {
-		req := kinesis.DescribeStreamInput{
-			StreamName: aws.String("logs"),
-		}
-		if _, err := client.DescribeStream(&req); err == nil {
-			return nil
-		} else {
-			errs = append(errs, err)
-		}
-
-		time.Sleep(500 * time.Millisecond)
-	}
-	return errs
+	_, err := client.DescribeStream(&req)
+	return err
 }
