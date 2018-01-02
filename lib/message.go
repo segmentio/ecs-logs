@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"encoding/json"
 	"sync"
 
@@ -40,6 +41,15 @@ func (list MessageBatch) Less(i int, j int) bool {
 
 func (list MessageBatch) Len() int {
 	return len(list)
+}
+
+func (list MessageBatch) Bytes() []byte {
+	var buf bytes.Buffer
+	w := json.NewEncoder(&buf)
+	for _, msg := range list {
+		w.Encode(msg)
+	}
+	return buf.Bytes()
 }
 
 type MessageQueue struct {
