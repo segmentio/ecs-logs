@@ -15,6 +15,7 @@ bin/ecs-logs-linux-amd64: $(SOURCES)
 depend:
 	go get -u github.com/kardianos/govendor
 	govendor sync
+	gem install rake
 	gem install --no-ri --no-rdoc fpm package_cloud
 
 dep: depend
