@@ -47,7 +47,7 @@ func (c *client) Open(group string, stream string) (w lib.Writer, err error) {
 
 	if token, err = createGroupAndStream(client, group, stream); err != nil {
 		// Creating the log group or stream failed, this writer cannot be used.
-		delete(c.writers, joinGroupStream(group, stream))
+		c.remove(group, stream)
 		return
 	}
 
