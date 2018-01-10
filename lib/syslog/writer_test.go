@@ -16,6 +16,10 @@ import (
 const testGoroutines = 50
 
 func TestWriter(t *testing.T) {
+	_, ok := os.LookupEnv("SYSLOG_URL")
+	if !ok {
+		t.Skip("Skipping test that relies on syslog")
+	}
 	// Start a bunch of workers who open and close writers like crazy.
 	errc := make(chan error, testGoroutines)
 	start := time.Now()
@@ -63,10 +67,13 @@ func TestWriter(t *testing.T) {
 }
 
 func TestGetPool(t *testing.T) {
-	s := os.Getenv("SYSLOG_URL")
+	s, ok := os.LookupEnv("SYSLOG_URL")
+	if !ok {
+		t.Skip("Skipping test that relies on syslog")
+	}
 	u, err := url.Parse(s)
 	if err != nil {
-		t.Fatal("SYSLOG_URL must be set")
+		t.Fatal(err)
 	}
 
 	opts := dialOpts{
@@ -99,7 +106,7 @@ func TestGetPool(t *testing.T) {
 
 	if pool1 != pool2 {
 		t.Error("pools did not match")
-  }
+	}
 }
 
 func BenchmarkNewWriter(b *testing.B) {
