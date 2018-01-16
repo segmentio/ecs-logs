@@ -24,6 +24,7 @@ import (
 
 	_ "github.com/segmentio/ecs-logs/lib/cloudwatchlogs"
 	_ "github.com/segmentio/ecs-logs/lib/datadog"
+	_ "github.com/segmentio/ecs-logs/lib/kinesis"
 	_ "github.com/segmentio/ecs-logs/lib/logdna"
 	_ "github.com/segmentio/ecs-logs/lib/loggly"
 	_ "github.com/segmentio/ecs-logs/lib/statsd"
