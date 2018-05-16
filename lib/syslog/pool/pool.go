@@ -136,8 +136,15 @@ func (p *LimitedConnPool) Close() {
 // it is removed from the pool so that a new connection can be dialed.
 func (p *LimitedConnPool) put(w *conn) error {
 	if w.dead {
-		<-p.live               // decrement the live count
-		p.signal <- struct{}{} // signal the connection dialer
+		// decrement the live connection count
+		<-p.live
+
+		// signal the connection dialer if necessary
+		select {
+		case p.signal <- struct{}{}:
+		default:
+		}
+
 		return w.conn.Close()
 	}
 	p.conns <- w

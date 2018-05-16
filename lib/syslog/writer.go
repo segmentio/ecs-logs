@@ -23,7 +23,10 @@ import (
 
 const DefaultTemplate = "<{{.PRIVAL}}>{{.TIMESTAMP}} {{.GROUP}}[{{.STREAM}}]: {{.MSG}}"
 
-const poolSize = 20
+const (
+	poolSize    = 20
+	dialTimeout = 10 * time.Second
+)
 
 var (
 	connPoolsLock sync.Mutex
@@ -335,12 +338,16 @@ func dialWriter(network, address string, config *tls.Config, socksProxy string) 
 	var dial func(string, string) (net.Conn, error)
 	var socksDialer proxy.Dialer
 
+	dialer := net.Dialer{
+		Timeout: dialTimeout,
+	}
 	if network == "tls" {
-		network, dial = "tcp", func(network, address string) (net.Conn, error) {
-			return tls.Dial(network, address, config)
+		network = "tcp"
+		dial = func(network, address string) (net.Conn, error) {
+			return tls.DialWithDialer(&dialer, network, address, config)
 		}
 	} else {
-		dial = net.Dial
+		dial = dialer.Dial
 	}
 
 	if socksProxy != "" {
