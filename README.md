@@ -116,7 +116,7 @@ format is not something it understands, it will generate a log event where the
 ```js
 {
   "level": "NONE",
-  "time": "<time at wich the message was sent to the journal>",
+  "time": "<time at which the message was sent to the journal>",
   "info": {
     "host": "<hostname>"
   },
