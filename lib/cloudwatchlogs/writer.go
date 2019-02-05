@@ -78,6 +78,13 @@ func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
 			continue
 		}
 
+		// See: https://github.com/segmentio/ecs-logs/issues/68
+		if token = parseDataAlreadyAcceptedException(err); token != nil {
+			err = nil
+			w.token = *token
+			return
+		}
+
 		// The documentation says we have to provide the sequence token when
 		// uploading events to CloudWatchLogs, if an error is returned here
 		// it's likely the token we have is either invalid or something worse
@@ -93,13 +100,7 @@ func (w *writer) WriteMessageBatch(batch lib.MessageBatch) (err error) {
 	return
 }
 
-func parseInvalidSequenceTokenException(err error) (token *string) {
-	msg := err.Error()
-
-	if !strings.HasPrefix(msg, "InvalidSequenceTokenException:") {
-		return
-	}
-
+func getRetryTokenFromMessage(msg string) (token *string) {
 	if lines := strings.Split(msg, "\n"); len(lines) != 0 {
 		msg = lines[0]
 	}
@@ -113,6 +114,26 @@ func parseInvalidSequenceTokenException(err error) (token *string) {
 	s := strings.TrimSpace(parts[2])
 	token = &s
 	return
+}
+
+func parseInvalidSequenceTokenException(err error) (token *string) {
+	msg := err.Error()
+
+	if !strings.HasPrefix(msg, "InvalidSequenceTokenException:") {
+		return
+	}
+
+	return getRetryTokenFromMessage(msg)
+}
+
+func parseDataAlreadyAcceptedException(err error) (token *string) {
+	msg := err.Error()
+
+	if !strings.HasPrefix(msg, "DataAlreadyAcceptedException:") {
+		return
+	}
+
+	return getRetryTokenFromMessage(msg)
 }
 
 var (
