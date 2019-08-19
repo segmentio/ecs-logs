@@ -121,9 +121,9 @@ func createGroupAndStream(client *cloudwatchlogs.CloudWatchLogs, group string, s
 
 	if _, err = client.PutRetentionPolicy(&cloudwatchlogs.PutRetentionPolicyInput{
 		LogGroupName: aws.String(group),
-		RetentionInDays: aws.Int64(90),
+		RetentionInDays: aws.Int64(180),
 	}); err != nil {
-		return "", err
+                fmt.Println(err.Error())
 	}
 
 	_, err = client.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
