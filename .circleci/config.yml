@@ -2,36 +2,16 @@ version: 2
 jobs:
   build:
     docker:
-      - image: segment/golang:latest
+      - image: circleci/golang:1.13
     working_directory: /go/src/github.com/segmentio/ecs-logs
     steps:
       - checkout
       - run:
-          name: install necessary packages
-          command: apt-get update && apt-get -y install rubygems ruby-dev
+          name: install deps
+          command: sudo apt-get install libsystemd-dev
       - run:
           name: check out dependencies
-          command: make depend
+          command: make vendor
       - run:
           name: test
           command: make test
-      - run:
-          name: build package
-          command: |
-            if [ "$CIRCLE_BRANCH" = "master" ] && git describe --tags --exact-match >/dev/null 2>&1; then
-              echo "{\"url\":\"https://packagecloud.io\",\"token\":\"$PACKAGECLOUD_TOKEN\"}" > $HOME/.packagecloud
-              make deb
-              make upload_deb
-            else
-              echo "Skipped"
-            fi
-#      - setup_remote_docker
-#     - run:
-#         name: build Docker image
-#         command: |
-#           if [ "$CIRCLE_BRANCH" = "master" ] && git describe --tags --exact-match >/dev/null 2>&1; then
-#             make image
-#             make push_image
-#           else
-#             echo "Skipped"
-#           fi
