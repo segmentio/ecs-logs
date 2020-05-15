@@ -13,6 +13,6 @@ COPY . $GOPATH/src/github.com/segmentio/ecs-logs
 # that in some situations you may need to define a different build output with the -o flag
 # This comment may be safely removed
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags '-w -s -extldflags "-static"' -o /ecs-logs
-FROM 528451384384.dkr.ecr.us-west-2.amazonaws.com/segment-scratch
+FROM scratch
 COPY --from=builder ecs-logs ecs-logs
 ENTRYPOINT ["ecs-logs"]
