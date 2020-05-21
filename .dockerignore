@@ -3,3 +3,5 @@ ecs-logs
 circle.yml
 LICENSE
 README.md
+#ignore git history to avoid commiting sensitive info
+.git
