@@ -12,7 +12,7 @@ RUN cd /go/src/github.com/segmentio/ecs-logs && \
     apt-get remove -y apt-transport-https build-essential git curl docker-engine && \
     apt-get autoremove -y && \
     apt-get clean -y && \
-    rm -rf /var/lib/apt/lists/* /go/* /usr/local/go /usr/src/Makefile*
+    rm -rf /var/lib/apt/lists/* /go/* /usr/local/go /usr/src/Makefile* .git
 
 # Sets the container's entry point.
 ENTRYPOINT ["ecs-logs"]
