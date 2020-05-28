@@ -1,6 +1,4 @@
-GIT_DIRTY := $(shell test -n "`git status --porcelain`" && echo "-CHANGES" || true)
-GIT_DESCRIBE := $(shell git describe --tags --always)
-VERSION := $(patsubst v%,%,$(GIT_DESCRIBE)$(GIT_DIRTY))
+VERSION := unmaintained
 LDFLAGS := "-X main.version=$(VERSION)"
 REPO := github.com/segmentio/ecs-logs
 SOURCES := $(git ls-files *.go)
