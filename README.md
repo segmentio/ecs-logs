@@ -1,6 +1,9 @@
-# ecs-logs [![CircleCI](https://circleci.com/gh/segmentio/ecs-logs.svg?style=shield)](https://circleci.com/gh/segmentio/ecs-logs) [![GoDoc](https://godoc.org/github.com/segmentio/ecs-logs?status.svg)](https://godoc.org/github.com/segmentio/ecs-logs)
+# ⚠️ Unmaintained ⚠️
 
-ecs-logs is a log forwarder for services ran by ecs-agent.
+This repository is unmaintained, but left as a historical relic for any wishing to adapt it. Godspeed!
+
+# ecs-logs
+ecs-logs was a log forwarder for services ran by ecs-agent.
 
 ## Quick Start
 
