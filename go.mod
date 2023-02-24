@@ -20,5 +20,5 @@ require (
 	github.com/statsd/datadog v0.0.0-20160116190012-12a17042af0a
 	github.com/stretchr/testify v1.5.1 // indirect
 	github.com/visionmedia/go-debug v0.0.0-20180109164601-bfacf9d8a444 // indirect
-	golang.org/x/net v0.0.0-20190311183353-d8887717615a
+	golang.org/x/net v0.7.0
 )
